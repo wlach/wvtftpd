@@ -22,7 +22,7 @@ private:
     WvConf &cfg;
     virtual void execute();
     virtual void new_connection();
-    int validate_access(TFTPConn *c);
+    int validate_access(TFTPConn *c, WvString &basedir);
 };
 
 #endif // __WVTFTPS_H
