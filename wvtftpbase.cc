@@ -46,7 +46,7 @@ struct timeval *PktTime::get(int pktnum)
     return &times[pktnum - idx];
 }
 
-WvTFTPBase::WvTFTPBase(int _tftp_tick, int port = 0)
+WvTFTPBase::WvTFTPBase(int _tftp_tick, int port)
     : WvUDPStream(port, WvIPPortAddr()), conns(5), log("WvTFTP", WvLog::Debug4),
       tftp_tick(_tftp_tick)
 {
@@ -212,7 +212,7 @@ void WvTFTPBase::handle_packet()
 
 // Send out the next packet, unless resend is true, in which case
 // send out packets unack through lastsent.
-void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
+void WvTFTPBase::send_data(TFTPConn *c, bool resend)
 {
 //    log("Sending data.\n");
     int firstpkt, lastpkt;
@@ -260,7 +260,7 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
 }
 
 // Send an acknowledgement.
-void WvTFTPBase::send_ack(TFTPConn *c, bool resend = false)
+void WvTFTPBase::send_ack(TFTPConn *c, bool resend)
 {
     if (!resend)
         c->lastsent++;
@@ -279,7 +279,7 @@ void WvTFTPBase::send_ack(TFTPConn *c, bool resend = false)
     c->pkttimes->set(c->lastsent, tv);
 }
 
-void WvTFTPBase::send_err(char errcode, WvString errmsg = "")
+void WvTFTPBase::send_err(char errcode, WvString errmsg)
 {
     packetsize = 4;
 
