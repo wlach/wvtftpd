@@ -46,8 +46,8 @@ Here's a summary of what makes WvTFTPd special.
   traffic, especially if a client isn't written correctly and responds to old
   DATA packets.  WvTFTP ignores all requests for retransmission and instead
   will retransmit after not receiving an ACK for two times the average return
-  trip time so far.  A minimum timeout is also configurable.  This also applies
-  to TFTP writes.
+  trip time so far.  Minimum and maximum timeouts are configurable.  This also
+  applies to TFTP writes.
 
 - large files: Some TFTP clients and servers can't handle files above 31 MB,
   due to the fact that the block number will roll over.  WvTFTP isn't one of
@@ -65,37 +65,45 @@ run fine without any special configuration, but in order to take
 advantage of some of its special features, you'll need to create a 
 configuration file.
 
-The first section of the configuration file might look like this:
+The first section of the configuration file might look like this (default
+values are shown):
 
 [TFTP]
-Base dir = /tftpboot
-Port = 6969
-Min Timeout = 500
+Base dir = /tftpboot/
+Port = 69
+Min Timeout = 100
+Max Timeout = 5000
+Max Timeout Count = 1000
 Prefetch = 3
-Readonly = 0
-Default File = kernel
-Strip Prefix = /tftp
+Readonly = 1
+Default File =
+Strip Prefix = 
 
 "Base dir" is the default directory.  If a client requests a file 
 without specifying the full path, the base dir is prepended.
 
-"Port" specifies the port WvTFTP should use.  The default is the regular TFTP port (69).
+"Port" specifies the port WvTFTP should use, if you don't want to use the
+standard, 69, for some reason.
 
 "Min Timeout" gives the minimum timeout value in milliseconds.  WvTFTP will
 retransmit if it does not get an answer in twice the average RTT thus far or
-the "Min Timeout" value, whichever is greater.
+the "Min Timeout" value, whichever is greater.  You can also specify a "Max
+Timeout" as the maximum waiting time until retransmission.
+
+If the number of timeouts reaches "Max Timeout Count", the transfer is
+aborted.
 
 "Prefetch" specifies the amount of negative latency, that is, how many
 packets are sent out at a time.
 
-"Readonly" determines if TFTP writes are allowed.  The default is 0 (writes
+"Readonly" determines if TFTP writes are allowed.  The default is 1 (writes
 not allowed).
 
 "Default File" is the file sent to a client if the requested file is 
 unavailable.
 
-The path given as "Strip Prefix" is automatically stripped from the 
-beginning of any client requests.  This is done before adding base dir.
+The path given as "Strip Prefix" is automatically stripped from the
+beginning of any client requests.  This is done before adding "base dir".
 
 The second section is [TFTP Aliases].  It contains a list of filename
 overrides and per-client filename overrides. Regular filename overrides
@@ -111,13 +119,22 @@ image = image2_4.img
 
 In this instance, if a user at 192.168.0.43 attempted to download the 
 file "image", the file "image2_5b.img" would actually be sent.  Users 
-from other machines would get the file "image2_4.img" when they request 
+from other machines will get the file "image2_4.img" when they request 
 "image".
 
-The third and fourth sections are [Registered TFTP Clients] and [New
-TFTP Clients].  [Registered TFTP Clients] holds a list of client IP
-addresses ("192.168.0.43 = 1") that are known to the server.  When a
-client attempts to connect, if its address is not in [Registered TFTP
-Clients], it is added to [New TFTP Clients]. This has no function inside
-of WvTFTP itself but might be useful in some situations (such as in our 
-Net Integrators).
+You can also specify one-time aliases in the [TFTP Alias Once] section.  The
+format is identical to [TFTP Aliases]; you may have global or per-client
+one-time aliases.  When a client asks for a file, WvTftp checks the [TFTP
+Alias Once] section first.  If a match is made, this alias is used, and when
+the download finishes the alias is removed from the section (regardless of
+whether the alias is global or client-specific).  Subsequent matching
+requests will then be checked against [TFTP Aliases] as normal.  Note that
+the [TFTP Alias Once] entry is only removed after a successful download; the
+entry will be left alone if a download fails.
+
+The last sections are [Registered TFTP Clients] and [New TFTP Clients]. 
+[Registered TFTP Clients] holds a list of client IP addresses ("192.168.0.43
+= 1") that are known to the server.  When a client attempts to connect, if
+its address is not in [Registered TFTP Clients], it is added to [New TFTP
+Clients]. This has no function inside of WvTFTP itself but might be useful
+in some situations (such as in our Net Integrators).
