@@ -20,7 +20,7 @@ int main()
     signal(SIGTERM, sighandler_die);
     signal(SIGHUP, sighandler_die);
     signal(SIGINT, sighandler_die);
-    WvConf cfg("/etc/wvtftp.conf");
+    WvConf cfg("/etc/wvtftpd.conf");
     WvTFTPServer tftps(cfg, 30, 30);
 
     while (tftps.isok() && !want_to_die)

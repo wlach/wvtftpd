@@ -3,9 +3,9 @@ include $(TOPDIR)/rules.mk
 
 XPATH=../utils ../streams ../ipstreams ../configfile
 
-default: all wvtftp.a wvtftpd
+default: all
 
-all:
+all: wvtftp.a wvtftpd
 
 #LIBS = ${EFENCE}
 
