@@ -125,8 +125,7 @@ void WvTFTPBase::handle_packet()
             {
 		struct timeval tv = wvtime();
 		
-		time_t rtt = msecdiff(tv,
-		      c->last_pkt_time[blocknum - c->lpt_idx]);
+		time_t rtt = msecdiff(tv, *(c->pkttimes->get(blocknum)));
 		log("rtt is %s.\n", rtt);
 		
 		c->rtt += rtt;
@@ -243,31 +242,7 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
 	
 	// if this packet is off the end of last_pkt_time, slide the
 	// last_packet_time window by adjusting lpt_idx.
-        if (c->lpt_idx + c->pktclump <= pktcount)
-        {
-            int d = pktcount - (c->lpt_idx + c->pktclump) + 1;
-            c->lpt_idx += d;
-	    
-	    assert(c->lpt_idx <= c->unack);
-	    assert(c->lpt_idx + c->pktclump > c->unack);
-	    
-	    if (d >= c->pktclump)
-	    {
-		// wipe them all
-                memset(c->last_pkt_time, 0,
-		       c->pktclump * sizeof(*c->last_pkt_time));
-	    }
-            else if (d > 0)
-            {
-		// slide the window as much as necessary
-                memmove(c->last_pkt_time, c->last_pkt_time + d, 
-			(c->pktclump - d) * sizeof(*c->last_pkt_time));
-                memset(c->last_pkt_time + c->pktclump - d, 0,
-		       d * sizeof(*c->last_pkt_time));
-            }
-        }
-	
-        c->last_pkt_time[pktcount - c->lpt_idx] = tv;
+        c->pkttimes->set(pktcount, tv);
     }
 }
 

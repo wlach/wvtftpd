@@ -65,8 +65,7 @@ public:
         size_t oacklen;             //     to resend it.
         int numtimeouts;
         int rtt;                    // "Total" round-trip time accumulator.
-        struct timeval *last_pkt_time;      // Time last packet was received.
-        int lpt_idx;                // Index for last_pkt_time.
+        PktTime *pkttimes;
         int total_packets;          // Number of correct packets used to
 	                            //     calculate average rtt.
 	           
@@ -78,7 +77,7 @@ public:
 	TFTPConn()
 	    { tftpfile = NULL; }
 	~TFTPConn()
-	    { if (tftpfile) fclose(tftpfile); delete[] last_pkt_time; }
+	    { if (tftpfile) fclose(tftpfile); if (pkttimes) delete pkttimes; }
     };
 
     DeclareWvDict(TFTPConn, WvIPPortAddr, remote);

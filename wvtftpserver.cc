@@ -38,21 +38,20 @@ void WvTFTPServer::execute()
 	
         struct timeval tv = wvtime();
         
-	int lastidx = i->unack - i->lpt_idx;
-        if (msecdiff(tv, i->last_pkt_time[lastidx]) >= timeout)
+        if (msecdiff(tv, *(i->pkttimes->get(i->unack))) >= timeout)
         {
             log(WvLog::Debug1,
                 "Timeout (%s ms) on block %s from connection to %s.\n", 
 		timeout, i->unack, i->remote);
-	    log(WvLog::Debug2, "[t1 %s, t2 %s, elapsed %s, unack %s, idx %s]\n",
-		tv.tv_sec, i->last_pkt_time[lastidx].tv_sec,
-		msecdiff(tv, i->last_pkt_time[lastidx]),
-		i->unack, i->lpt_idx);
+	    log(WvLog::Debug2, "[t1 %s, t2 %s, elapsed %s, unack %s]\n",
+		tv.tv_sec, i->pkttimes->get(i->unack)->tv_sec,
+		msecdiff(tv, *(i->pkttimes->get(i->unack))),
+		i->unack);
 		
             log("(packets %s, avg rtt %s, timeout %s, ms elapsed %s)\n",
                 i->total_packets, 
                 i->total_packets ? i->rtt / i->total_packets : 1000, timeout,
-		msecdiff(tv, i->last_pkt_time[lastidx]));
+		msecdiff(tv, *(i->pkttimes->get(i->unack))));
 
             if (++i->numtimeouts == max_timeouts)
             {
@@ -225,17 +224,19 @@ void WvTFTPServer::new_connection()
     c->blksize = 512;
     c->tsize = 0;
     c->pktclump = cfg.getint("TFTP", "Prefetch", 3);
+    c->pkttimes = new PktTime(c->pktclump);
     c->unack = 0;
     c->donefile = false;
     c->numtimeouts = 0;
     c->rtt = 1000;
     c->total_packets = 1;
     c->timed_out_ignore = -1;
-    c->lpt_idx = 1;
-    c->last_pkt_time = new struct timeval[c->pktclump];
     
     for (int i = 0; i < c->pktclump; i++)
-	c->last_pkt_time[i] = wvtime();
+    {
+        struct timeval tv = wvtime();
+	c->pkttimes->set(i, tv);
+    }
 
     // Strip [TFTP]"Strip prefix" from filename, then compare it to 
     // [TFTP Aliases] entries.  If nothing is found, then add [TFTP]"Base dir"
@@ -330,7 +331,8 @@ void WvTFTPServer::new_connection()
             tftpaccess = validate_access(c, basedir);
             if (tftpaccess)
             {
-                log(WvLog::Debug, "File access failed (error %s).\n", tftpaccess);
+                log(WvLog::Debug, "File access failed (error %s).\n",
+                    tftpaccess);
                 send_err(tftpaccess);
                 delete c;
                 return;
