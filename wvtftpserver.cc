@@ -188,7 +188,7 @@ void WvTFTPServer::new_connection()
     newconn->timeout = def_timeout;
     newconn->blksize = 512;
     newconn->tsize = 0;
-    newconn->pktclump = 2;
+    newconn->pktclump = cfg.getint("TFTP", "Prefetch", 3);
     newconn->unack = 0;
     newconn->donefile = false;
     newconn->numtimeouts = 0;
