@@ -14,16 +14,12 @@
 .\" You should have received a copy of the GNU Lesser General Public
 .\" License along with this library; if not, write to the Free Software
 .\" Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
 .TH WvTFTPd 8 "Jan 2002" "WvTFTPd"
-
 .SH NAME
 wvtftpd \- The world's fastest and most configurable TFTP Server
-
-
 .SH SYNOPSIS
 .B wvtftpd
-
+.RB [ OPTIONS ]
 .SH DESCRIPTION
 .B wvtftp
 is a blindingly fast and amazingly configurable Trivial File Transfer
@@ -35,7 +31,6 @@ starts, it first loads its configuration from
 .IR /etc/wvtftpd.conf ,
 which contains basic information about which files you want transferred, who
 should get those files, etc.
-.PP
 .SH OPTIONS
 There are only a couple of options currently recognised by
 .BR wvtftpd .
@@ -51,30 +46,25 @@ Displays debug information for troubleshooting
 .TP
 .B "\-dd"
 Displays a lot of debug information for troubleshooting
-.BR wvtftpd.
+.BR wvtftpd .
 Use this option when reporting any bugs or problems with the program.
-.PP
 .SH BUGS
 Probably very few, but if you find any, please report them to us.  There is a
 mailing list for discussion about
-.BR wvtftpd 
+.BR wvtftpd .
 and other 
 .BR WvStreams
 projects. If you are having problems, or have anything else to say, send email
-with the body "SUBSCRIBE" to
-.BR <wvstreams-dev-request@lists.nit.ca> .
-.PP
+with the body \(lqSUBSCRIBE\(rq to
+.br
+.RI < wvstreams-dev-request@lists.nit.ca >.
 .SH FILES
 .TP
-.IR /etc/wvtftpd.conf
+.I /etc/wvtftpd.conf
 Configuration file which contains account, passwords and delivery
 information.  A sample file is included with the source.
-.PP
 .SH AUTHORS
-Mark Cote for Net Integration Technologies Inc., as
+Mark C\[^o]t\['e] for Net Integration Technologies Inc., as
 part of the NetIntegrator project.
-.PP
-.SH FAQ
-.TP
-.BR http://open.nit.ca/wvtftpd
-.PP
+.SH "HOME PAGE"
+.I http://open.nit.ca/wiki/?page=WvTftp

@@ -1,3 +1,12 @@
+wvtftpd (0.10) unstable; urgency=low
+
+  * New upstream release.
+    - Fixes exploitable buffer overflow with privilege escalation.
+  * Update build system to work with libwvstreams-dev 4.0.1.
+  * Initial Debian release (Closes: #138949)
+
+ -- Simon Law <sfllaw@debian.org>  Fri, 19 Nov 2004 00:39:59 -0500
+
 wvtftpd (0.2) unstable; urgency=low
 
   * Synchronise with libwvstreams release
@@ -5,7 +14,6 @@ wvtftpd (0.2) unstable; urgency=low
     etherboot host has been fixed.
   * Logs of bugs where wvtftpd would crash under load has been fixed.
   * Fixes to handle PXE Boot options
-  * Initial Debian release (Closes: #138949)
 
  -- Patrick Patterson <ppatters@debian.org>  Mon, 29 Jul 2002 18:39:51 -0400
 

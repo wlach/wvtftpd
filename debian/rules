@@ -7,33 +7,71 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-build: build-stamp
-build-stamp:
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+CFLAGS = -Wall
+
+ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -g
+endif
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+	INSTALL_PROGRAM += -s
+endif
+
+build: build-arch # build-indep
+build-indep:
+build-indep-stamp:
 	dh_testdir
-	$(MAKE) CXXOPTS="-fno-implement-inlines -fno-rtti -fno-exceptions"
-	touch build-stamp
+	touch build-indep-stamp
+
+build-arch:
+build-arch-stamp:
+	dh_testdir
+	$(MAKE)
+	touch build-arch-stamp
 
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp
+	rm -f build-indep-stamp build-arch-stamp
 	$(MAKE) clean
 	dh_clean
 
-# Build architecture-independent files here.
-binary-indep: build
-# We have nothing to do by default.
-
-# Build architecture-dependent files here.
-binary-arch: build
+install: install-arch # install-indep
+install-indep:
 	dh_testdir
 	dh_testroot
-	dh_clean -k
-	dh_installdirs
-	$(MAKE) PREFIX=`pwd`/debian/tmp/usr \
-		install
+	dh_clean -k -i
+	dh_installdirs -i
+	dh_install -i
+
+install-arch:
+	dh_testdir
+	dh_testroot
+	dh_clean -k -s
+	dh_installdirs -s
+	$(MAKE) install prefix=$(CURDIR)/debian/wvtftpd/usr
+	dh_install -s
+
+# Build architecture-dependent files here.
+binary-common:
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs ChangeLog
 	dh_installdocs
-	dh_installmanpages
+	dh_installman
+	dh_installexamples
 	dh_strip
 	dh_compress
 	dh_fixperms
@@ -46,5 +84,13 @@ binary-arch: build
 source diff:                                                                  
 	@echo >&2 'source and diff are obsolete - use dpkg-source -b'; false
 
-binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary
+# Build architecture-independent files here.
+binary-indep: build-indep install-indep
+	$(MAKE) -f debian/rules DH_OPTIONS=-i binary-common
+
+# Build architecture dependant packages using the common target.
+binary-arch: build-arch install-arch
+	$(MAKE) -f debian/rules DH_OPTIONS=-a binary-common
+
+binary: binary-arch # binary-indep
+.PHONY: build clean binary-indep binary-arch binary-common binary install-indep install-arch install
