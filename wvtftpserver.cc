@@ -65,31 +65,35 @@ void WvTFTPServer::execute()
 // Returns 0 if successful or the error number (1-8) if not.
 int WvTFTPServer::validate_access(TFTPConn *c)
 {
+    log(WvString("1 Filename is %s.\n", c->filename));
     WvString basedir = cfg.get("TFTP", "Base dir", "/tftpboot/");
+    log(WvString("2 Filename is %s.\n", c->filename));
     if (basedir[basedir.len() -1] != '/')
         basedir.append("/");
-    if (c->filename[0] != '/')
-    {
-        c->filename = WvString("%s%s", basedir, c->filename);
-    }
-    else
-    {
-        if (strncmp(c->filename, basedir, basedir.len()))
-            return 2;
-    }
+    log(WvString("3 Filename is %s.\n", c->filename));
+
+    log(WvString("Basedir is %s.\n", basedir));
+    log(WvString("Remote is %s.\n", c->remote));
+    log(WvString("Mode is %s.\n", c->mode));
+    if (strncmp(c->filename, basedir, basedir.len()))
+        return 2;
+    log("Basedir checks out.\n");
 
     // As the original tftpd says, "prevent tricksters from getting
     // around the directory restrictions".
     if (!strncmp(c->filename, "../", 3))
         return 2;
+    log("First trick okay.\n");
 
     const char *cp;
     struct stat stbuf;
     for (cp = c->filename + 1; *cp; cp++)
         if(*cp == '.' && strncmp(cp-1, "/../", 4) == 0)
             return 2;
+    log("Second trick checks out.\n");
     if (stat(c->filename, &stbuf) < 0)
         return (errno == ENOENT ? 1 : 2);
+    log("Third check okay.\n");
     if (c->direction == tftpread)
     {
         if ((stbuf.st_mode&(S_IREAD >> 6)) == 0)
@@ -100,6 +104,7 @@ int WvTFTPServer::validate_access(TFTPConn *c)
         if ((stbuf.st_mode&(S_IWRITE >> 6)) == 0)
             return 2;
     }
+    log("Fourth check passed.\n");
     return 0; 
 }
 
@@ -187,9 +192,54 @@ void WvTFTPServer::new_connection()
     newconn->donefile = false;
     newconn->numtimeouts = 0;
 
-    newconn->filename = cfg.get("TFTP Aliases", WvString("%s %s",
-         clientportless, newconn->filename),
-         cfg.get("TFTP Aliases", newconn->filename, newconn->filename));
+    // Strip [TFTP]"Strip prefix" from filename, then compare it to 
+    // [TFTP Aliases] entries.  If nothing is found, then add [TFTP]"Base dir"
+    // and try again.
+
+    WvString strip_prefix = cfg.get("TFTP", "Strip prefix", "");
+    if (strip_prefix != "")
+    {
+        if (strip_prefix[strip_prefix.len() -1] != '/')
+            strip_prefix.append("/");
+
+        log(WvString("strip prefix is %s.\n", strip_prefix));
+        if (!strncmp(newconn->filename, strip_prefix, strip_prefix.len()))
+        {
+            log("Stripping prefix.\n");
+            newconn->filename = WvString(&newconn->filename[strip_prefix.len()]);
+        }
+    }
+    log(WvString("Filename after stripping is %s.\n", newconn->filename));
+    WvString alias = cfg.get("TFTP Aliases", WvString("%s %s", clientportless,
+            newconn->filename), cfg.get("TFTP Aliases", newconn->filename,
+            ""));
+    log(WvString("Alias is %s.\n", alias));
+    if (alias != "")
+        newconn->filename = alias;
+
+    WvString basedir = cfg.get("TFTP", "Base dir", "/tftpboot/");
+    if (basedir[basedir.len() -1] != '/')
+        basedir.append("/");
+
+    // If the first char isn't /, add base dir and look for aliases
+    // again.  If we don't need to add the base dir, we've already
+    // looked for aliases above.
+    if (newconn->filename[0] != '/')
+    {
+        newconn->filename = WvString("%s%s", basedir, newconn->filename);
+        if (alias == "")
+        {
+            // Check for aliases again
+            log(WvString("Filename before 2nd alias check is %s.\n", newconn->filename));
+            WvString newname = cfg.get("TFTP Aliases", WvString("%s %s",
+                clientportless, newconn->filename), cfg.get("TFTP Aliases",
+                newconn->filename, newconn->filename));
+            newconn->filename = newname;
+            log(WvString("Filename after adding basedir and checking for alias is %s.\n", newconn->filename));
+        }
+    }
+   
+    log(WvString("Final filename is %s.\n", newconn->filename));
 
     int tftpaccess = validate_access(newconn);
     if (tftpaccess)
