@@ -116,6 +116,14 @@ void WvTFTPServer::new_connection()
     
     TFTPConn *newconn = new TFTPConn;
     newconn->client = remaddr;
+    WvIPAddr clientportless = static_cast<WvIPAddr>(newconn->client);
+
+    if (!cfg.getint("Registered Clients", clientportless,
+             cfg.getint("New Clients", clientportless, false)))
+    {
+        cfg.setint("New Clients", clientportless, true);
+        cfg.flush();
+    }
 
     // Make sure the filename and mode actually end with nulls.
     bool foundnull1 = false;
