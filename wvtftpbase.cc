@@ -95,7 +95,7 @@ void WvTFTPBase::handle_packet()
         if (blocknum > c->unack + 32000)
             blocknum = (mult - 1) * 65536 + small_blocknum;
         log(WvLog::Debug5,
-	    "handle: got small_blocknum %s; unack is %s; lastsent is %s; "
+	    "Handle: got small_blocknum %s; unack is %s; lastsent is %s; "
             "blocknum is %s.\n",
             small_blocknum, c->unack, c->lastsent, blocknum);
 	
@@ -104,13 +104,13 @@ void WvTFTPBase::handle_packet()
 	    // treat the first block specially if we need to send an option
 	    // acknowledgement.
             c->send_oack = false;
-            log(WvLog::Debug5, "last sent: %s unack: %s pktclump: %s\n",
+            log(WvLog::Debug5, "Last sent: %s unack: %s pktclump: %s\n",
                 c->lastsent, c->unack, c->pktclump);
             int pktsremain = c->lastsent - c->unack;
             while (pktsremain < c->pktclump - 1)
             {
-                log(WvLog::Debug5, "result is %s\n", pktsremain);
-                log(WvLog::Debug5, "send\n");
+                log(WvLog::Debug5, "Result is %s\n", pktsremain);
+                log(WvLog::Debug5, "Send\n");
                 send_data(c);
                 if (c->donefile)
                     break;

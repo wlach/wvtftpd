@@ -424,12 +424,12 @@ void WvTFTPServer::new_connection()
         }
         else
         {
-            log(WvLog::Debug4, "last sent: %s unack: %s pktclump: %s\n",
+            log(WvLog::Debug4, "Last sent: %s unack: %s pktclump: %s\n",
                 c->lastsent, c->unack, c->pktclump);
             int pktsremain = c->lastsent - c->unack;
             while (pktsremain < c->pktclump - 1)
             {
-                log(WvLog::Debug4, "result is %s\n", pktsremain);
+                log(WvLog::Debug4, "Result is %s\n", pktsremain);
                 send_data(c);
                 if (c->donefile)
                     break;
@@ -457,7 +457,7 @@ bool WvTFTPServer::check_filename(TFTPConn *c)
         if (strip_prefix[strip_prefix.len() -1] != '/')
             strip_prefix.append("/");
 
-        log(WvLog::Debug4, "strip prefix is %s.\n", strip_prefix);
+        log(WvLog::Debug4, "Strip prefix is %s.\n", strip_prefix);
         if (!strncmp(c->filename, strip_prefix, strip_prefix.len()))
         {
             log(WvLog::Debug4, "Stripping prefix.\n");
@@ -582,7 +582,7 @@ unsigned int WvTFTPServer::process_options(TFTPConn *c, unsigned int opts_start)
                     return 0;
                 }
 
-                log(WvLog::Debug, "blksize option enabled (%s octets).\n", c->blksize);
+                log(WvLog::Debug, "Blksize option enabled (%s octets).\n", c->blksize);
                 strcpy(oackp, optname);
                 oackp += strlen(optname) + 1;
                 c->oacklen += strlen(optname) + 1;
@@ -621,7 +621,7 @@ unsigned int WvTFTPServer::process_options(TFTPConn *c, unsigned int opts_start)
                 }
 
                 WvString oacktsize = WvString("%s", c->tsize);
-                log(WvLog::Debug, "tsize option enabled (%s octets).\n", c->tsize);
+                log(WvLog::Debug, "Tsize option enabled (%s octets).\n", c->tsize);
                 strcpy(oackp, optname);
                 oackp += strlen(optname) + 1;
                 c->oacklen += strlen(optname) + 1;
