@@ -23,7 +23,7 @@ int main()
     signal(SIGINT, sighandler_die);
     WvConf cfg("/etc/wvtftpd.conf");
     WvTFTPServer tftps(cfg, 30, 30);
-    WvLogConsole logdisp(2, WvLog::Debug3);
+    WvLogConsole logdisp(2, WvLog::Debug4);
 
     while (tftps.isok() && !want_to_die)
     {
