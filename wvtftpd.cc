@@ -1,13 +1,19 @@
-#include "wvtftps.h"
+/*
+ * Worldvisions Weaver Software:
+ *   Copyright (C) 1997-2001 Net Integration Technologies, Inc.
+ *
+ * This is the WvTFTP server daemon.
+ */
+#include "wvtftpserver.h"
 
 int main()
 {
-    WvTFTPs tftps("/tftpboot", 30, 30);
+    WvTFTPServer tftps("/tftpboot", 30, 30);
 
     while (tftps.isok())
     {
 	if (tftps.select(0))
 	    tftps.callback();
     }
-    wvcon->print("TFTPs is not okay; aborting.\n");
+    wvcon->print("WvTFTPServer is not okay; aborting.\n");
 }

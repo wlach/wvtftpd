@@ -9,7 +9,7 @@ all:
 
 #LIBS = ${EFENCE}
 
-wvtftp.a: wvtftp.o wvtftps.o
+wvtftp.a: wvtftpbase.o wvtftpserver.o
 
 wvtftpd: wvtftp.a ../ipstreams/ipstreams.a ../streams/streams.a \
                       ../utils/utils.a
