@@ -37,7 +37,6 @@ void WvTFTPBase::handle_packet()
     if (opcode == ERROR)
     {
         log(WvLog::Debug, "Received error packet; aborting.\n");
-        fclose(c->tftpfile);
         conns.remove(c);
         return;
     }
@@ -49,7 +48,6 @@ void WvTFTPBase::handle_packet()
         {
             log(WvLog::Debug, "Badly formed packet (read); aborting.\n");
             send_err(4);
-            fclose(c->tftpfile);
             conns.remove(c);
             return;
         }
@@ -61,7 +59,6 @@ void WvTFTPBase::handle_packet()
         if (blocknum == 0 && c->send_oack)
         {
             c->send_oack = false;
-            delete c->oack;
             log(WvLog::Debug5, "last sent: %s unack: %s pktclump: %s\n",c->lastsent, c->unack,
                 c->pktclump);
             int pktsremain = static_cast<int>(c->lastsent) -
@@ -87,7 +84,6 @@ void WvTFTPBase::handle_packet()
             if (blocknum == c->lastsent && c->donefile)
             {
                 log(WvLog::Debug, "File transferred successfully.\n");
-                fclose(c->tftpfile);
                 conns.remove(c);
             }
             else
@@ -115,7 +111,6 @@ void WvTFTPBase::handle_packet()
         {
             log(WvLog::Debug, "Badly formed packet (write); aborting.\n");
             send_err(4);
-            fclose(c->tftpfile);
             conns.remove(c);
             return;
         }
@@ -133,7 +128,6 @@ void WvTFTPBase::handle_packet()
             if (packetsize < c->blksize + 4)
             {
                 log(WvLog::Debug, "File transferred successfully.\n");
-                fclose(c->tftpfile);
                 conns.remove(c);
             }
             send_ack(c);

@@ -7,7 +7,7 @@ default: all
 
 all: wvtftp.a wvtftpd
 
-#LIBS = ${EFENCE}
+LIBS = ${EFENCE}
 
 wvtftp.a: wvtftpbase.o wvtftpserver.o
 
