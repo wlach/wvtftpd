@@ -7,12 +7,9 @@
 #include "strutils.h"
 #include <sys/stat.h>
 
-WvTFTPServer::WvTFTPServer(WvStringList* _basedirs, int _tftp_tick,
-    int def_timeout)
-    : WvTFTPBase(_tftp_tick, def_timeout, 69), basedirs(_basedirs)
+WvTFTPServer::WvTFTPServer(WvConf &_cfg, int _tftp_tick, int def_timeout)
+    : WvTFTPBase(_tftp_tick, def_timeout, 69), cfg(_cfg)
 {
-    if (basedirs->count() == 0)
-        basedirs->append(new WvString("/tftpboot"), true);
 }
 
 WvTFTPServer::~WvTFTPServer()
@@ -68,25 +65,16 @@ void WvTFTPServer::execute()
 // Returns 0 if successful or the error number (1-8) if not.
 int WvTFTPServer::validate_access(TFTPConn *c)
 {
-    WvStringList::Iter i(*basedirs);
+    WvString basedir = cfg.get("TFTP", "Base dir", "/tftpboot/");
+    if (basedir[basedir.len() -1] != '/')
+        basedir.append("/");
     if (c->filename[0] != '/')
     {
-        i.rewind();
-        i.next();
-        c->filename = WvString("%s/%s", i(), c->filename);
+        c->filename = WvString("%s/%s", basedir, c->filename);
     }
     else
     {
-        bool violated = true;
-        for (i.rewind(); i.next(); )
-        {
-            if (!strncmp(c->filename, i(), i().len()))
-            {
-                violated = false;
-                break;
-            }
-        }
-        if (violated)
+        if (strncmp(c->filename, basedir, basedir.len()))
             return 2;
     }
 
@@ -194,11 +182,26 @@ void WvTFTPServer::new_connection()
     int tftpaccess = validate_access(newconn);
     if (tftpaccess)
     {
-        log(WvLog::Debug4,
-            WvString("File access failed (error %s).\n", tftpaccess));
-        send_err(tftpaccess);
-        delete newconn;
-        return;
+        if (tftpaccess == 1)
+        {
+            // File not found.  Check for default file.
+            newconn->filename = cfg.get("TFTP", "DefaultFile", "");
+            if (newconn->filename == "")
+            {
+                log(WvLog::Debug4, WvString("File not found.  Aborting.\n"));
+                send_err(1);
+                delete newconn;
+                return; 
+            }
+        }
+        else
+        {
+            log(WvLog::Debug4,
+                WvString("File access failed (error %s).\n", tftpaccess));
+            send_err(tftpaccess);
+            delete newconn;
+            return;
+        }
     }
     log(WvLog::Debug4, WvString("Filename is %s.\n", newconn->filename));
 
@@ -212,7 +215,7 @@ void WvTFTPServer::new_connection()
         if (!newconn->tftpfile)
         {
             log(WvLog::Debug4, "Failed to open file for reading; aborting.\n");
-            send_err(1);
+            send_err(2);
             delete newconn;
             return;
         }

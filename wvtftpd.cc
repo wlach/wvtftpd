@@ -8,9 +8,8 @@
 
 int main()
 {
-    WvStringList *tftpdirs = new WvStringList;
-    tftpdirs->append(new WvString("/tftpboot"),true);
-    WvTFTPServer tftps(tftpdirs, 30, 30);
+    WvConf cfg("/etc/wvtftp.conf");
+    WvTFTPServer tftps(cfg, 30, 30);
 
     while (tftps.isok())
     {
