@@ -73,6 +73,7 @@ void WvTFTPServer::execute()
                         i->pktclump);
             }
 
+            setdest(i->remote);  // since we didn't just read a packet
             if (i->numtimeouts == cfg["TFTP/Max Timeout Count"].getmeint(1000))
             {
                 log(WvLog::Debug,"Max timeouts reached; aborting transfer.\n");
