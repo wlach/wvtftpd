@@ -1,7 +1,7 @@
 TOPDIR=../..
 include $(TOPDIR)/wvrules.mk
 
-XPATH=../utils ../streams ../ipstreams ../configfile
+XPATH=../wvstreams/include
 
 default: all
 
@@ -11,7 +11,7 @@ all: wvtftp.a wvtftpd
 
 wvtftp.a: wvtftpbase.o wvtftpserver.o
 
-wvtftpd: wvtftp.a ../libwvstreams.a
+wvtftpd: wvtftp.a ../wvstreams/libwvstreams.a
 
 clean:
 	rm -f wvtftpd backup.a *.o
