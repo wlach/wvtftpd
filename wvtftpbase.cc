@@ -7,7 +7,7 @@
 
 WvTFTPBase::WvTFTPBase(int _tftp_tick, int _def_timeout, int port = 0)
     : WvUDPStream(port, WvIPPortAddr()), conns(5), log("WvTFTP", WvLog::Debug4),
-      tftp_tick(_tftp_tick*1000), def_timeout(_def_timeout), max_timeouts(3)
+      tftp_tick(_tftp_tick*1000), def_timeout(_def_timeout), max_timeouts(7)
 {
 }
 
@@ -22,14 +22,13 @@ void WvTFTPBase::set_max_timeouts(int _max_timeouts)
 
 void WvTFTPBase::dump_pkt()
 {
-    log(WvLog::Debug5, "Packet:\n");
+    //log(WvLog::Debug5, "Packet:\n");
     //log(WvLog::Debug5, hexdump_buffer(packet, packetsize));
 }
 
 void WvTFTPBase::handle_packet()
 {
-    //log(WvLog::Debug4, "Handling packet from %s\n", remaddr);
-    log(WvLog::Debug4, ".", remaddr);
+    log(WvLog::Debug4, "Handling packet from %s\n", remaddr);
 
     TFTPConn *c = conns[remaddr];
     TFTPOpcode opcode = static_cast<TFTPOpcode>(packet[0] * 256 + packet[1]);
@@ -176,7 +175,7 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
         if (datalen < c->blksize)
             c->donefile = true;
         packetsize += datalen;
-        log(WvLog::Debug5, "Sending ");
+//        log(WvLog::Debug5, "Sending ");
         dump_pkt();
         write(packet, packetsize);
     }
@@ -196,7 +195,7 @@ void WvTFTPBase::send_ack(TFTPConn *c, bool resend = false)
     packet[1] = 4;
     packet[2] = c->lastsent / 256;
     packet[3] = c->lastsent % 256;
-    log(WvLog::Debug5, "Sending ");
+//    log(WvLog::Debug5, "Sending ");
     dump_pkt();
     write(packet, packetsize); 
 }
@@ -231,7 +230,7 @@ void WvTFTPBase::send_err(char errcode, WvString errmsg = "")
     }
     strcpy(&packet[4],errmsg.edit());
     packetsize += errmsg.len() + 1;
-    log(WvLog::Debug5, "Sending Error ");
+//    log(WvLog::Debug5, "Sending Error ");
     dump_pkt();
     write(packet, packetsize);     
 }

@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     }
 
     WvConf cfg("/etc/wvtftpd.conf");
-    WvTFTPServer tftps(cfg, 30, 30);
+    WvTFTPServer tftps(cfg, 2, 6);
     WvLogConsole logdisp(2, lvl);
 
     while (tftps.isok() && !want_to_die)
