@@ -391,6 +391,7 @@ void WvTFTPServer::new_connection()
             return;
         }
 
+        umask(011);
         if (c->mode == netascii)
             c->tftpfile = fopen(c->filename, "w");
         else if (c->mode == octet)
