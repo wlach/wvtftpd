@@ -4,7 +4,7 @@
  *
  * This is the WvTFTP server daemon.
  */
-#include "uniconf.h"
+#include "uniconfroot.h"
 #include "wvtftpserver.h"
 #include "wvlogrcv.h"
 #include "wvver.h"
