@@ -21,6 +21,8 @@ PktTime::~PktTime()
 
 void PktTime::set(int pktnum, struct timeval &tv)
 {
+    WvLog log("PktTime", WvLog::Info);
+    log("pktnum %s idx %s\n", pktnum, idx);
     assert(pktnum >= idx);
     if ((pktnum - idx) >= pktclump)
     {
@@ -123,22 +125,22 @@ void WvTFTPBase::handle_packet()
             // Add rtt to cumulative sum.
             if (blocknum == c->unack && blocknum > c->timed_out_ignore)
             {
-		struct timeval tv = wvtime();
+                struct timeval tv = wvtime();
 		
-		time_t rtt = msecdiff(tv, *(c->pkttimes->get(blocknum)));
-		log("rtt is %s.\n", rtt);
+                time_t rtt = msecdiff(tv, *(c->pkttimes->get(blocknum)));
+                log("rtt is %s.\n", rtt);
 		
-		c->rtt += rtt;
-		c->total_packets++;
+                c->rtt += rtt;
+                c->total_packets++;
             }
 	    
-	    if (blocknum == c->unack && blocknum == c->lastsent
-		&& c->donefile)
-	    {
-		// transfer completed if we haven't sent any packets last
-		// time we acked, and this is the right ack.
-		log(WvLog::Debug, "File transferred successfully.\n");
-		log(WvLog::Debug, "Average rtt was %s ms.\n", c->rtt /
+            if (blocknum == c->unack && blocknum == c->lastsent
+                && c->donefile)
+            {
+                // transfer completed if we haven't sent any packets last
+                // time we acked, and this is the right ack.
+                log(WvLog::Debug, "File transferred successfully.\n");
+                log(WvLog::Debug, "Average rtt was %s ms.\n", c->rtt /
 		    blocknum);
 		conns.remove(c);
 		c = NULL;
@@ -179,17 +181,31 @@ void WvTFTPBase::handle_packet()
         if (blocknum < c->lastsent - 32000)
             blocknum = (mult + 1) * 65536 + small_blocknum;
 
-        if (blocknum == c->lastsent)
-            send_ack(c, true);
-        else if (blocknum == c->lastsent + 1)
+        if (blocknum == c->lastsent + 1)
         {
-            fwrite(&packet[4], sizeof(char), packetsize-4, c->tftpfile);
-            if (packetsize < c->blksize + 4)
+            unsigned int data_packetsize = packetsize;
+            fwrite(&packet[4], sizeof(char), data_packetsize-4, c->tftpfile);
+
+            // Add rtt to cumulative sum.
+            if (blocknum > c->timed_out_ignore)
             {
-                log(WvLog::Debug, "File transferred successfully.\n");
-                conns.remove(c);
+                struct timeval tv = wvtime();
+                time_t rtt = msecdiff(tv, *(c->pkttimes->get(blocknum - 1)));
+                log("rtt is %s.\n", rtt);
+
+                c->rtt += rtt;
+                c->total_packets++;
             }
             send_ack(c);
+
+            if (data_packetsize < c->blksize + 4)
+            {
+                log(WvLog::Debug, "File transferred successfully.\n");
+                log(WvLog::Debug, "Average rtt was %s ms.\n", c->rtt /
+		    blocknum);
+		conns.remove(c);
+		c = NULL;
+            }
         }
     }
 }
@@ -239,9 +255,6 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
         write(packet, packetsize);
 
         struct timeval tv = wvtime();
-	
-	// if this packet is off the end of last_pkt_time, slide the
-	// last_packet_time window by adjusting lpt_idx.
         c->pkttimes->set(pktcount, tv);
     }
 }
@@ -260,6 +273,10 @@ void WvTFTPBase::send_ack(TFTPConn *c, bool resend = false)
 //    log(WvLog::Debug5, "Sending ");
     dump_pkt();
     write(packet, packetsize); 
+
+    struct timeval tv = wvtime();
+    log("Setting %s\n", c->lastsent);
+    c->pkttimes->set(c->lastsent, tv);
 }
 
 void WvTFTPBase::send_err(char errcode, WvString errmsg = "")

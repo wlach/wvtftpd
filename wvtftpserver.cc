@@ -29,6 +29,8 @@ void WvTFTPServer::execute()
     TFTPConnDict::Iter i(conns);
     for (i.rewind(); i.next(); )
     {
+        int expect_packet = (i->direction == tftpwrite) ? i->lastsent :
+            i->unack;
         connscount++;
         timeout = cfg.getint("TFTP", "Min Timeout", 100);
         if (!i->total_packets)
@@ -38,20 +40,20 @@ void WvTFTPServer::execute()
 	
         struct timeval tv = wvtime();
         
-        if (msecdiff(tv, *(i->pkttimes->get(i->unack))) >= timeout)
+        if (msecdiff(tv, *(i->pkttimes->get(expect_packet))) >= timeout)
         {
             log(WvLog::Debug1,
                 "Timeout (%s ms) on block %s from connection to %s.\n", 
-		timeout, i->unack, i->remote);
-	    log(WvLog::Debug2, "[t1 %s, t2 %s, elapsed %s, unack %s]\n",
-		tv.tv_sec, i->pkttimes->get(i->unack)->tv_sec,
-		msecdiff(tv, *(i->pkttimes->get(i->unack))),
-		i->unack);
+		timeout, expect_packet, i->remote);
+	    log(WvLog::Debug2, "[t1 %s, t2 %s, elapsed %s, expected %s]\n",
+		tv.tv_sec, i->pkttimes->get(expect_packet)->tv_sec,
+		msecdiff(tv, *(i->pkttimes->get(expect_packet))),
+		expect_packet);
 		
             log("(packets %s, avg rtt %s, timeout %s, ms elapsed %s)\n",
                 i->total_packets, 
                 i->total_packets ? i->rtt / i->total_packets : 1000, timeout,
-		msecdiff(tv, *(i->pkttimes->get(i->unack))));
+		msecdiff(tv, *(i->pkttimes->get(expect_packet))));
 
             if (++i->numtimeouts == max_timeouts)
             {
@@ -130,7 +132,11 @@ int WvTFTPServer::validate_access(TFTPConn *c, WvString &basedir)
         if(*cp == '.' && strncmp(cp-1, "/../", 4) == 0)
             return 2;
     if (stat(c->filename, &stbuf) < 0)
-        return (errno == ENOENT ? 1 : 2);
+        if (c->direction == tftpread)
+            return (errno == ENOENT ? 1 : 2);
+        else
+            return 0;            // If the file doesn't exist, allow writing.
+
     if (c->direction == tftpread)
     {
         if ((stbuf.st_mode&(S_IREAD >> 6)) == 0)
@@ -200,6 +206,13 @@ void WvTFTPServer::new_connection()
 
     c->direction = static_cast<TFTPDir>((int)pktcode-1);
     log(WvLog::Debug4, "Direction is %s.\n", c->direction);
+    if ((c->direction == tftpwrite) && cfg.getint("TFTP", "Readonly", 1))
+    {
+        log(WvLog::Warning, "Writes are not permitted.\n");
+        send_err(2);
+        delete c;
+        return;
+    }
 
     // convert mode to TFTPMode type.
     unsigned int ch;
@@ -552,7 +565,7 @@ void WvTFTPServer::new_connection()
     }
     else
     {
-        c->lastsent = 65535;
+        c->lastsent = -1;
         send_ack(c);
     }
 }
