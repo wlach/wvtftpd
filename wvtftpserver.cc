@@ -263,6 +263,11 @@ void WvTFTPServer::new_connection()
                 delete newconn;
                 return; 
             }
+            alias = cfg.get("TFTP Aliases", WvString("%s %s", clientportless,
+                newconn->filename), cfg.get("TFTP Aliases", newconn->filename,
+                ""));
+            if (alias != "")
+                newconn->filename = alias;
             if (newconn->filename[0] != '/')
             {
                 WvString newname = basedir;
