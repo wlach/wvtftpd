@@ -275,8 +275,8 @@ void WvTFTPServer::new_connection()
     // [TFTP Aliases] entries.  If nothing is found, then add [TFTP]"Base dir"
     // and try again.
 
-    WvString strip_prefix = cfg["TFTP"]["Strip prefix"].get();
-    if (!!strip_prefix)
+    WvString strip_prefix = cfg["TFTP"]["Strip prefix"].get("");
+    if (strip_prefix != "")
     {
         if (strip_prefix[strip_prefix.len() -1] != '/')
             strip_prefix.append("/");
@@ -290,9 +290,9 @@ void WvTFTPServer::new_connection()
     }
     log(WvLog::Debug5, "Filename after stripping is %s.\n", c->filename);
     WvString alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
-            c->filename)].get(cfg["TFTP Aliases"][c->filename].get());
+            c->filename)].get(cfg["TFTP Aliases"][c->filename].get(""));
     log(WvLog::Debug5, "Alias is %s.\n", alias);
-    if (!!alias)
+    if (alias != "")
         c->filename = alias;
 
     WvString basedir = cfg["TFTP"]["Base dir"].get("/tftpboot/");
