@@ -28,7 +28,8 @@ void WvTFTPBase::dump_pkt()
 
 void WvTFTPBase::handle_packet()
 {
-    log(WvLog::Debug4, "Handling packet from %s\n", remaddr);
+    //log(WvLog::Debug4, "Handling packet from %s\n", remaddr);
+    log(WvLog::Debug4, ".", remaddr);
 
     TFTPConn *c = conns[remaddr];
     TFTPOpcode opcode = static_cast<TFTPOpcode>(packet[0] * 256 + packet[1]);
@@ -144,7 +145,7 @@ void WvTFTPBase::handle_packet()
 // send out packets unack through lastsent.
 void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
 {
-    log("Sending data.\n");
+//    log("Sending data.\n");
     int firstpkt, lastpkt;
 
     if (resend)
