@@ -8,7 +8,8 @@
 #include <sys/stat.h>
 
 WvTFTPServer::WvTFTPServer(WvConf &_cfg, int _tftp_tick, int def_timeout)
-    : WvTFTPBase(_tftp_tick, def_timeout, 69), cfg(_cfg)
+    : WvTFTPBase(_tftp_tick, def_timeout, _cfg.getint("TFTP", "Port", 69)),
+      cfg(_cfg)
 {
     log(WvLog::Info, "WvTFTP listening on %s.\n", *local());
 }
