@@ -70,7 +70,7 @@ int WvTFTPServer::validate_access(TFTPConn *c)
         basedir.append("/");
     if (c->filename[0] != '/')
     {
-        c->filename = WvString("%s/%s", basedir, c->filename);
+        c->filename = WvString("%s%s", basedir, c->filename);
     }
     else
     {
@@ -178,6 +178,10 @@ void WvTFTPServer::new_connection()
     newconn->unack = 0;
     newconn->donefile = false;
     newconn->numtimeouts = 0;
+
+    newconn->filename = cfg.get("TFTP Aliases", WvString("%s %s",
+         static_cast<WvIPAddr>(newconn->client), newconn->filename),
+         cfg.get("TFTP Aliases", newconn->filename, newconn->filename));
 
     int tftpaccess = validate_access(newconn);
     if (tftpaccess)
