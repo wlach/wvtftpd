@@ -118,7 +118,7 @@ void WvTFTPServer::new_connection()
     // Make sure the filename and mode actually end with nulls.
     bool foundnull1 = false;
     bool foundnull2 = false;
-    unsigned int modestart;
+    unsigned int modestart = 0;
     for (unsigned int i = 2; i < packetsize; i++)
     {
         if (packet[i] == 0)
@@ -313,7 +313,9 @@ void WvTFTPServer::new_connection()
         newconn->oacklen = 2;
         char * oackp = &(newconn->oack[2]);
         char * optname;
-        char * optvalue;
+        char * optvalue = -1;  // Give optvalue a dummy value so gcc doesn't 
+                               // complain about potential lack of
+                               // initialization.
         while (ch < packetsize-1)
         {
             optname = &packet[ch];
