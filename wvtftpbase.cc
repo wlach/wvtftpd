@@ -16,7 +16,7 @@ PktTime::PktTime(int _pktclump)
 
 PktTime::~PktTime()
 {
-    delete[] times;
+    deletev times;
 }
 
 void PktTime::set(int pktnum, struct timeval &tv)
