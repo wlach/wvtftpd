@@ -29,7 +29,7 @@ void WvTFTPBase::dump_pkt()
 
 void WvTFTPBase::handle_packet()
 {
-    log(WvLog::Debug4, WvString("Handling packet from %s\n", remaddr));
+    log(WvLog::Debug4, "Handling packet from %s\n", remaddr);
 
     TFTPConn *c = conns[remaddr];
     TFTPOpcode opcode = static_cast<TFTPOpcode>(packet[0] * 256 + packet[1]);
@@ -178,7 +178,7 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
         packet[3] = pktcount % 256;
         // data
         datalen = fread(&packet[4], sizeof(char), c->blksize, c->tftpfile);
-        log(WvLog::Debug5, WvString("Read %s bytes from file.\n", datalen));
+        log(WvLog::Debug5, "Read %s bytes from file.\n", datalen);
         if (datalen < c->blksize)
             c->donefile = true;
         packetsize += datalen;

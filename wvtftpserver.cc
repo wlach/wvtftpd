@@ -95,9 +95,9 @@ int WvTFTPServer::validate_access(TFTPConn *c, WvString &basedir)
 
 void WvTFTPServer::new_connection()
 {
-    log(WvLog::Debug4, WvString("New connection from %s\n", remaddr));
+    log(WvLog::Debug4, "New connection from %s\n", remaddr);
     TFTPOpcode pktcode = static_cast<TFTPOpcode>(packet[0] * 256 + packet[1]);
-    log(WvLog::Debug4, WvString("Packet opcode is %s.\n", pktcode));
+    log(WvLog::Debug4, "Packet opcode is %s.\n", pktcode);
     if (pktcode > WRQ)
     {
         log(WvLog::Debug4, "Erroneous packet; discarding.\n");
@@ -146,7 +146,7 @@ void WvTFTPServer::new_connection()
     newconn->filename = &packet[2];
 
     newconn->direction = static_cast<TFTPDir>(static_cast<int>(pktcode)-1);
-    log(WvLog::Debug4, WvString("Direction is %s.\n", newconn->direction));
+    log(WvLog::Debug4, "Direction is %s.\n", newconn->direction);
 
     // convert mode to TFTPMode type.
     unsigned int ch;
@@ -160,14 +160,13 @@ void WvTFTPServer::new_connection()
         newconn->mode = mail;
     else
     { 
-        log(WvLog::Debug4,
-            WvString("Unknown mode string \"%s\"; discarding.\n",
-            &packet[modestart]));
+        log(WvLog::Debug4, "Unknown mode string \"%s\"; discarding.\n",
+            &packet[modestart]);
         send_err(4);
         delete newconn;
         return;
     }
-    log(WvLog::Debug4, WvString("Mode is %s.\n", newconn->mode));
+    log(WvLog::Debug4, "Mode is %s.\n", newconn->mode);
 
     newconn->timeout = def_timeout;
     newconn->blksize = 512;
@@ -187,18 +186,18 @@ void WvTFTPServer::new_connection()
         if (strip_prefix[strip_prefix.len() -1] != '/')
             strip_prefix.append("/");
 
-        log(WvString("strip prefix is %s.\n", strip_prefix));
+        log("strip prefix is %s.\n", strip_prefix);
         if (!strncmp(newconn->filename, strip_prefix, strip_prefix.len()))
         {
             log("Stripping prefix.\n");
             newconn->filename = WvString(&newconn->filename[strip_prefix.len()]);
         }
     }
-    log(WvString("Filename after stripping is %s.\n", newconn->filename));
+    log("Filename after stripping is %s.\n", newconn->filename);
     WvString alias = cfg.get("TFTP Aliases", WvString("%s %s", clientportless,
             newconn->filename), cfg.get("TFTP Aliases", newconn->filename,
             ""));
-    log(WvString("Alias is %s.\n", alias));
+    log("Alias is %s.\n", alias);
     if (alias != "")
         newconn->filename = alias;
 
@@ -217,17 +216,18 @@ void WvTFTPServer::new_connection()
         if (alias == "")
         {
             // Check for aliases again
-            log(WvString("Filename before 2nd alias check is %s.\n", newconn->filename));
+            log("Filename before 2nd alias check is %s.\n", newconn->filename);
             WvString newname = cfg.get("TFTP Aliases", WvString("%s %s",
                 clientportless, newconn->filename), cfg.get("TFTP Aliases",
                 newconn->filename, newconn->filename));
             newconn->filename = newname;
-            log(WvString("Filename after adding basedir and checking for alias is %s.\n", newconn->filename));
+            log("Filename after adding basedir and checking for alias is %s.\n",
+                newconn->filename);
         }
         newconn->filename.unique();
     }
    
-    log(WvString("Final filename is %s.\n", newconn->filename));
+    log("Final filename is %s.\n", newconn->filename);
 
     int tftpaccess = validate_access(newconn, basedir);
     if (tftpaccess)
@@ -238,7 +238,7 @@ void WvTFTPServer::new_connection()
             newconn->filename = cfg.get("TFTP", "Default File", "");
             if (newconn->filename == "")
             {
-                log(WvLog::Debug4, WvString("File not found.  Aborting.\n"));
+                log(WvLog::Debug4, "File not found.  Aborting.\n");
                 send_err(1);
                 delete newconn;
                 return; 
@@ -246,14 +246,13 @@ void WvTFTPServer::new_connection()
         }
         else
         {
-            log(WvLog::Debug4,
-                WvString("File access failed (error %s).\n", tftpaccess));
+            log(WvLog::Debug4, "File access failed (error %s).\n", tftpaccess);
             send_err(tftpaccess);
             delete newconn;
             return;
         }
     }
-    log(WvLog::Debug4, WvString("Filename is %s.\n", newconn->filename));
+    log(WvLog::Debug4, "Filename is %s.\n", newconn->filename);
 
     if (newconn->direction == tftpread)
     {
@@ -326,8 +325,8 @@ void WvTFTPServer::new_connection()
                     if (ch == packetsize)
                     {    
                         log(WvLog::Debug4,
-                            WvString("Badly formed option %s.  Aborting.\n",
-                            (i==0) ? "name" : "value"));
+                            "Badly formed option %s.  Aborting.\n",
+                            (i==0) ? "name" : "value");
                         send_err(8);
                         fclose(newconn->tftpfile);
                         delete newconn;
@@ -350,7 +349,7 @@ void WvTFTPServer::new_connection()
                     WvString message = WvString(
                         "Request for blksize of %s is invalid.  Aborting.",
                         newconn->blksize);
-                    log(WvLog::Debug4, WvString("%s\n", message));
+                    log(WvLog::Debug4, "%s\n", message);
                     send_err(8, message);
                     fclose(newconn->tftpfile);
                     delete newconn;
@@ -358,8 +357,8 @@ void WvTFTPServer::new_connection()
                 }
                 else
                 {
-                    log(WvString("blksize option enabled (%s octets).\n",
-                        newconn->blksize));
+                    log("blksize option enabled (%s octets).\n",
+                        newconn->blksize);
                     strcpy(oackp, optname);
                     oackp += strlen(optname) + 1;
                     newconn->oacklen += strlen(optname) + 1;
@@ -373,15 +372,15 @@ void WvTFTPServer::new_connection()
                 int newtimeout = atoi(optvalue);
                 if (newtimeout*1000 < tftp_tick || newtimeout > 255)
                 {
-                    log(WvLog::Debug4, WvString(
+                    log(WvLog::Debug4,
                         "Request for timeout of %s is invalid.  Ignoring.",
-                        newtimeout));
+                        newtimeout);
                 }
                 else
                 {
                     newconn->timeout = newtimeout;
-                    log(WvString("timeout option enabled (%s seconds).\n",
-                        newconn->timeout));
+                    log("timeout option enabled (%s seconds).\n",
+                        newconn->timeout);
                     strcpy(oackp, optname);
                     oackp += strlen(optname) + 1;
                     newconn->oacklen += strlen(optname) + 1;
@@ -398,7 +397,7 @@ void WvTFTPServer::new_connection()
                     WvString message = WvString(
                         "Request for tsize of %s is invalid.  Aborting.",
                         newconn->tsize);
-                    log(WvLog::Debug4, WvString("%s\n", message));
+                    log(WvLog::Debug4, "%s\n", message);
                     send_err(8, message);
                     fclose(newconn->tftpfile);
                     delete newconn;
@@ -413,7 +412,7 @@ void WvTFTPServer::new_connection()
                         {
                             WvString message = 
                                 "Cannot get stats for file.  Aborting.";
-                           log(WvLog::Debug4, WvString("%s\n", message));
+                           log(WvLog::Debug4, "%s\n", message);
                            send_err(8, message);
                            fclose(newconn->tftpfile);
                            delete newconn;
@@ -423,8 +422,8 @@ void WvTFTPServer::new_connection()
                         delete tftpfilestat;
                     }
                     WvString oacktsize = WvString("%s", newconn->tsize);
-                    log(WvString("tsize option enabled (%s octets).\n",
-                        newconn->tsize));
+                    log("tsize option enabled (%s octets).\n",
+                        newconn->tsize);
                     strcpy(oackp, optname);
                     oackp += strlen(optname) + 1;
                     newconn->oacklen += strlen(optname) + 1;
@@ -446,9 +445,8 @@ void WvTFTPServer::new_connection()
            newconn->mode = mail;
         else
         { 
-            log(WvLog::Debug4,
-                WvString("Unknown mode string \"%s\"; discarding.\n",
-                &packet[modestart]));
+            log(WvLog::Debug4, "Unknown mode string \"%s\"; discarding.\n",
+                &packet[modestart]);
             send_err(4);
             fclose(newconn->tftpfile);
             delete newconn;
