@@ -1,6 +1,6 @@
 /*
  * Worldvisions Weaver Software:
- *   Copyright (C) 1997-2003 Net Integration Technologies, Inc.
+ *   Copyright (C) 1997-2004 Net Integration Technologies, Inc.
  */
 #include "wvtftpserver.h"
 #include "strutils.h"

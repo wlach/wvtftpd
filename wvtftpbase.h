@@ -1,9 +1,9 @@
 /*
  * Worldvisions Weaver Software:
- *   Copyright (C) 1997-2003 Net Integration Technologies, Inc.
+ *   Copyright (C) 1997-2004 Net Integration Technologies, Inc.
  *
  * WvTFTPBase, the WvTFTP base class.  This class holds functions that are
- *     common to both server and client.
+ * common to both server and client (if one is ever written).
  */
 #ifndef __WVTFTPBASE_H
 #define __WVTFTPBASE_H
