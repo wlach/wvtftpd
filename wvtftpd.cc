@@ -2,11 +2,12 @@
 
 int main()
 {
-    WvTFTPs tftps("/tftpboot");
+    WvTFTPs tftps("/tftpboot", 30*1000);
 
     while (tftps.isok())
     {
-	if (tftps.select(-1))
+	if (tftps.select(0))
 	    tftps.callback();
     }
+    wvcon->print("TFTPs is not okay; aborting.\n");
 }
