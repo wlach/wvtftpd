@@ -18,6 +18,8 @@ WvTFTPServer::~WvTFTPServer()
 
 void WvTFTPServer::execute()
 {
+    WvTFTPBase::execute();
+    
     int connscount = 0;
     WvTFTPServer::TFTPConnDict::Iter i(conns);
     for (i.rewind(); i.next(); )
