@@ -1,6 +1,6 @@
 /*
  * Worldvisions Weaver Software:
- *   Copyright (C) 1997-2004 Net Integration Technologies, Inc.
+ *   Copyright (C) 1997-2005 Net Integration Technologies, Inc.
  *
  * This is the WvTFTP server daemon.
  *
@@ -20,72 +20,40 @@
  */
 
 #include "uniconfroot.h"
+#include "wvstreamsdaemon.h"
 #include "wvtftpserver.h"
-#include "wvlogrcv.h"
 #include "wvver.h"
 #include <signal.h>
 #include <errno.h>
 
-static bool want_to_die = false;
-
-void sighandler_die(int signum)
+class WvTFTPDaemon : public WvStreamsDaemon
 {
-    want_to_die = true;
-}
+public:
+    WvTFTPDaemon(const UniConf &_cfg) :
+        WvStreamsDaemon("wvtftpd", WVTFTP_VER_STRING, 
+                        WvStreamsDaemonCallback(this, &WvTFTPDaemon::cb)),
+        cfg(_cfg),
+        log("wvtftpd", WvLog::Info)
+        {
+        }
+    void cb(WvStreamsDaemon &daemon, void *) { 
+        tftps = new WvTFTPServer(cfg, 100);
+        add_die_stream(tftps, true, "WvTFTP");
+    }
 
-static void usage(char *argv0)
-{
-    fprintf(stderr,
-            "Usage: %s [-d] [-dd]\n"
-            "     -d   Print debug messages\n"
-            "     -dd  Print lots of debug messages\n"
-            "     -V   Print version and exit\n",
-            argv0);
-    exit(1);
-}
+private:
+    UniConf cfg;
+    WvTFTPServer *tftps;
+    WvLog log; 
+};
+
 
 int main(int argc, char **argv)
 {
-    WvLog::LogLevel lvl = WvLog::Info;
-    int c;
-    signal(SIGTERM, sighandler_die);
-    signal(SIGHUP, sighandler_die);
-    signal(SIGINT, sighandler_die);
-    while ((c = getopt(argc, argv, "dV?")) >= 0)
-    {
-        switch(c)
-        {
-        case 'd':
-            if (lvl <= WvLog::Info)
-                lvl = WvLog::Debug1;
-            else
-                lvl = WvLog::Debug4;
-            break;
-        case 'V':
-            fprintf(stderr, "WvTFTPd version %s\n", WVTFTP_VER_STRING);
-            exit(2);
-        case '?':
-            usage(argv[0]);
-            break;
-        }
-    }
-
-    WvLog log("WvTFTP", WvLog::Critical);
     UniConfRoot cfg("ini:/etc/wvtftpd.conf");
-    WvTFTPServer tftps(cfg, 100);
-    WvLogConsole logdisp(2, lvl);
+    WvTFTPDaemon d(cfg);
 
-    while (tftps.isok() && !want_to_die)
-    {
-	if (tftps.select(1000))
-	    tftps.callback();
-    }
-    if (!tftps.isok() && tftps.geterr())
-    {
-        log("%s.\n", strerror(tftps.geterr()));
-        return tftps.geterr();
-    }
-
+    int retval = d.run(argc, argv);
     cfg.commit();
-    return 0;
+    return retval;
 }

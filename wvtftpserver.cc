@@ -30,7 +30,14 @@ WvTFTPServer::WvTFTPServer(UniConf &_cfg, int _tftp_tick)
     updated |= update_cfg("TFTP Alias Once");
     if (updated)
 	log(WvLog::Info, "Converted old configuration file.\n");
-    log(WvLog::Info, "WvTFTP listening on %s.\n", *local());
+
+    if (isok())
+        log(WvLog::Info, "WvTFTP listening on %s.\n", *local());
+    else
+    {
+        log(WvLog::Error, "Could not listen on port %s. Are you root?\n", 
+            _cfg["TFTP"]["Port"].getmeint(69));
+    }
 }
 
 
