@@ -2,14 +2,14 @@
  * Worldvisions Weaver Software:
  *   Copyright (C) 1997-2002 Net Integration Technologies, Inc.
  */
-#include <ctype.h>
 #include "wvtftpserver.h"
 #include "strutils.h"
+#include "wvtimeutils.h"
 #include <sys/stat.h>
+#include <ctype.h>
 
-WvTFTPServer::WvTFTPServer(WvConf &_cfg, int _tftp_tick, int def_timeout)
-    : WvTFTPBase(_tftp_tick, def_timeout, _cfg.getint("TFTP", "Port", 69)),
-      cfg(_cfg)
+WvTFTPServer::WvTFTPServer(WvConf &_cfg, int _tftp_tick)
+    : WvTFTPBase(_tftp_tick, _cfg.getint("TFTP", "Port", 69)), cfg(_cfg)
 {
     log(WvLog::Info, "WvTFTP listening on %s.\n", *local());
 }
@@ -21,37 +21,68 @@ WvTFTPServer::~WvTFTPServer()
 
 void WvTFTPServer::execute()
 {
+    int connscount = 0;
+    time_t timeout;
+    
     WvTFTPBase::execute();
     
-    int connscount = 0;
-    WvTFTPServer::TFTPConnDict::Iter i(conns);
+    TFTPConnDict::Iter i(conns);
     for (i.rewind(); i.next(); )
     {
         connscount++;
-        if (difftime(time(0), i().stamp) >= i().timeout)
+        timeout = cfg.getint("TFTP", "Min Timeout", 100);
+        if (!i->total_packets)
+            timeout = 1000;
+        if ((2 * i->rtt / i->total_packets) > timeout)
+            timeout = 2 * i->rtt / i->total_packets;
+	
+        struct timeval tv = wvtime();
+        
+	int lastidx = (i->unack - i->lpt_idx) % 65536;
+        if (msecdiff(tv, i->last_pkt_time[lastidx]) >= timeout)
         {
-            log("Timeout on connection from %s.\n", i().remote);
-            if (++i().numtimeouts == max_timeouts)
+            log(WvLog::Debug1, "Timeout (%s ms) on connection from %s.\n", 
+		timeout, i->remote);
+	    log(WvLog::Debug2, "[t1 %s, t2 %s, elapsed %s, unack %s, idx %s]\n",
+		tv.tv_sec, i->last_pkt_time[lastidx].tv_sec,
+		msecdiff(tv, i->last_pkt_time[lastidx]),
+		i->unack, i->lpt_idx);
+		
+            log("(packets %s, avg rtt %s, timeout %s, ms elapsed %s)\n",
+                i->total_packets, 
+                i->total_packets ? i->rtt / i->total_packets : 1000, timeout,
+		msecdiff(tv, i->last_pkt_time[lastidx]));
+
+            if (++i->numtimeouts == max_timeouts)
             {
                 log(WvLog::Debug,"Max timeouts reached; aborting transfer.\n");
                 send_err(0, "Too many timeouts.");
                 conns.remove(&i());
             }
-            else if (i().send_oack)
+            else if (i->send_oack)
             {
                 log(WvLog::Debug5, "Sending oack ");
-                memcpy(packet, i().oack, 512);
-                packetsize = i().oacklen;
+                memcpy(packet, i->oack, 512);
+                packetsize = i->oacklen;
                 dump_pkt();
                 write(packet, packetsize);
+		i->timed_out_ignore = i->lastsent; 
             }
-            else if (i().direction == tftpread)
+            else if (i->direction == tftpread)
+	    {
                 send_data(&i(), true);
+		i->timed_out_ignore = i->lastsent; 
+	    }
             else
+	    {
                 send_ack(&i(), true);
+		i->timed_out_ignore = i->lastsent; 
+	    }
+	    
+	    // 'i' might be invalid here!!
 	    
 	    // list might have lost an entry, screwing up the iterator;
-	    // rewind now.
+	    // rewind it now.
 	    i.rewind();
         }
     }
@@ -121,14 +152,14 @@ void WvTFTPServer::new_connection()
     if ((!code) || (code > 2))
     {
         log(WvLog::Debug, "Erroneous packet; aborting.\n");
-        send_err(4);
+        //send_err(4);
         return;
     }
     TFTPOpcode pktcode = static_cast<TFTPOpcode>(code);
     
-    TFTPConn *newconn = new TFTPConn;
-    newconn->remote = remaddr;
-    WvIPAddr clientportless = static_cast<WvIPAddr>(newconn->remote);
+    TFTPConn *c = new TFTPConn;
+    c->remote = remaddr;
+    WvIPAddr clientportless = static_cast<WvIPAddr>(c->remote);
 
     if (!cfg.getint("Registered TFTP Clients", clientportless,
              cfg.getint("New TFTP Clients", clientportless, false)))
@@ -160,42 +191,50 @@ void WvTFTPServer::new_connection()
     {
         log(WvLog::Debug, "Badly formed packet; aborting.\n");
         send_err(4);
-        delete newconn;
+        delete c;
         return;
     }
 
-    newconn->filename = &packet[2];
+    WvString origfilename = &packet[2];
+    c->filename = origfilename;
 
-    newconn->direction = static_cast<TFTPDir>(static_cast<int>(pktcode)-1);
-    log(WvLog::Debug4, "Direction is %s.\n", newconn->direction);
+    c->direction = static_cast<TFTPDir>((int)pktcode-1);
+    log(WvLog::Debug4, "Direction is %s.\n", c->direction);
 
     // convert mode to TFTPMode type.
     unsigned int ch;
     for (ch = modestart; packet[ch] != 0; ch++)
         packet[ch] = tolower(packet[ch]);
     if (!strcmp(&packet[modestart], "netascii"))
-        newconn->mode = netascii;
+        c->mode = netascii;
     else if (!strcmp(&packet[modestart], "octet"))
-        newconn->mode = octet;
+        c->mode = octet;
     else if (!strcmp(&packet[modestart], "mail"))
-        newconn->mode = mail;
+        c->mode = mail;
     else
     { 
         log(WvLog::Debug, "Unknown mode string \"%s\"; aborting.\n",
             &packet[modestart]);
         send_err(4);
-        delete newconn;
+        delete c;
         return;
     }
-    log(WvLog::Debug4, "Mode is %s.\n", newconn->mode);
+    log(WvLog::Debug4, "Mode is %s.\n", c->mode);
 
-    newconn->timeout = def_timeout;
-    newconn->blksize = 512;
-    newconn->tsize = 0;
-    newconn->pktclump = cfg.getint("TFTP", "Prefetch", 3);
-    newconn->unack = 0;
-    newconn->donefile = false;
-    newconn->numtimeouts = 0;
+    c->blksize = 512;
+    c->tsize = 0;
+    c->pktclump = cfg.getint("TFTP", "Prefetch", 3);
+    c->unack = 0;
+    c->donefile = false;
+    c->numtimeouts = 0;
+    c->rtt = 1000;
+    c->total_packets = 1;
+    c->timed_out_ignore = -1;
+    c->lpt_idx = 1;
+    c->last_pkt_time = new struct timeval[c->pktclump];
+    
+    for (int i = 0; i < c->pktclump; i++)
+	c->last_pkt_time[i] = wvtime();
 
     // Strip [TFTP]"Strip prefix" from filename, then compare it to 
     // [TFTP Aliases] entries.  If nothing is found, then add [TFTP]"Base dir"
@@ -208,19 +247,19 @@ void WvTFTPServer::new_connection()
             strip_prefix.append("/");
 
         log(WvLog::Debug5, "strip prefix is %s.\n", strip_prefix);
-        if (!strncmp(newconn->filename, strip_prefix, strip_prefix.len()))
+        if (!strncmp(c->filename, strip_prefix, strip_prefix.len()))
         {
             log(WvLog::Debug5, "Stripping prefix.\n");
-            newconn->filename = WvString(&newconn->filename[strip_prefix.len()]);
+            c->filename = WvString(&c->filename[strip_prefix.len()]);
         }
     }
-    log(WvLog::Debug5, "Filename after stripping is %s.\n", newconn->filename);
+    log(WvLog::Debug5, "Filename after stripping is %s.\n", c->filename);
     WvString alias = cfg.get("TFTP Aliases", WvString("%s %s", clientportless,
-            newconn->filename), cfg.get("TFTP Aliases", newconn->filename,
+            c->filename), cfg.get("TFTP Aliases", c->filename,
             ""));
     log(WvLog::Debug5, "Alias is %s.\n", alias);
     if (alias != "")
-        newconn->filename = alias;
+        c->filename = alias;
 
     WvString basedir = cfg.get("TFTP", "Base dir", "/tftpboot/");
     if (basedir[basedir.len() -1] != '/')
@@ -229,62 +268,70 @@ void WvTFTPServer::new_connection()
     // If the first char isn't /, add base dir and look for aliases
     // again.  If we don't need to add the base dir, we've already
     // looked for aliases above.
-    if (newconn->filename[0] != '/')
+    if (c->filename[0] != '/')
     {
-        WvString newname = basedir;
-        newname.append(newconn->filename);
-        newconn->filename = newname;
+	WvString newname("%s%s", basedir, c->filename);
+        c->filename = newname;
         if (alias == "")
         {
             // Check for aliases again
-            log(WvLog::Debug5, "Filename before 2nd alias check is %s.\n", newconn->filename);
-            WvString newname = cfg.get("TFTP Aliases", WvString("%s %s",
-                clientportless, newconn->filename), cfg.get("TFTP Aliases",
-                newconn->filename, newconn->filename));
-            newconn->filename = newname;
-            log(WvLog::Debug5, "Filename after adding basedir and checking for alias is %s.\n",
-                newconn->filename);
+            log(WvLog::Debug5,
+		"Filename before 2nd alias check is %s.\n", c->filename);
+            WvString newname2(
+		   cfg.get("TFTP Aliases", 
+			   WvString("%s %s", clientportless, c->filename),
+			   cfg.get("TFTP Aliases", c->filename, c->filename))
+		   );
+	    c->filename = newname2;
+	    log(c->filename);
+            log(WvLog::Debug5,
+		"Filename after adding basedir and checking for alias is %s.\n",
+                c->filename);
         }
-        newconn->filename.unique();
+        c->filename.unique();
     }
   
-    if (newconn->direction == tftpread)
-        log(WvLog::Debug, "Client is requesting to read %s.\n", newconn->filename);
+    if (c->direction == tftpread)
+        log(WvLog::Debug, "Client is requesting to read '%s'.\n",
+	    origfilename);
     else
-        log(WvLog::Debug, "Client is requesting to write%s.\n", newconn->filename);
+        log(WvLog::Debug, "Client is requesting to write '%s'.\n",
+	    origfilename);
+    if (origfilename != c->filename)
+	log(WvLog::Debug, "...using '%s' instead.\n", c->filename);
 
-    int tftpaccess = validate_access(newconn, basedir);
+    int tftpaccess = validate_access(c, basedir);
     if (tftpaccess)
     {
         if (tftpaccess == 1)
         {
             // File not found.  Check for default file.
-            newconn->filename = cfg.get("TFTP", "Default File", "");
-            if (newconn->filename == "")
+            c->filename = cfg.get("TFTP", "Default File", "");
+            if (c->filename == "")
             {
                 log(WvLog::Debug, "File not found.  Aborting.\n");
                 send_err(1);
-                delete newconn;
+                delete c;
                 return; 
             }
             alias = cfg.get("TFTP Aliases", WvString("%s %s", clientportless,
-                newconn->filename), cfg.get("TFTP Aliases", newconn->filename,
+                c->filename), cfg.get("TFTP Aliases", c->filename,
                 ""));
             if (alias != "")
-                newconn->filename = alias;
-            if (newconn->filename[0] != '/')
+                c->filename = alias;
+            if (c->filename[0] != '/')
             {
                 WvString newname = basedir;
-                newname.append(newconn->filename);
-                newconn->filename = newname;
-                newconn->filename.unique();
+                newname.append(c->filename);
+                c->filename = newname;
+                c->filename.unique();
             }
-            tftpaccess = validate_access(newconn, basedir);
+            tftpaccess = validate_access(c, basedir);
             if (tftpaccess)
             {
                 log(WvLog::Debug, "File access failed (error %s).\n", tftpaccess);
                 send_err(tftpaccess);
-                delete newconn;
+                delete c;
                 return;
             }
         }
@@ -292,67 +339,67 @@ void WvTFTPServer::new_connection()
         {
             log(WvLog::Debug, "File access failed (error %s).\n", tftpaccess);
             send_err(tftpaccess);
-            delete newconn;
+            delete c;
             return;
         }
     }
-    log(WvLog::Debug4, "Filename is %s.\n", newconn->filename);
+    log(WvLog::Debug4, "Filename is %s.\n", c->filename);
 
-    if (newconn->direction == tftpread)
+    if (c->direction == tftpread)
     {
-        if (newconn->mode == netascii)
-            newconn->tftpfile = fopen(newconn->filename, "r");
-        else if (newconn->mode == octet)
-            newconn->tftpfile = fopen(newconn->filename, "rb");
+        if (c->mode == netascii)
+            c->tftpfile = fopen(c->filename, "r");
+        else if (c->mode == octet)
+            c->tftpfile = fopen(c->filename, "rb");
 
-        if (!newconn->tftpfile)
+        if (!c->tftpfile)
         {
             log(WvLog::Debug, "Failed to open file for reading; aborting.\n");
             send_err(2);
-            delete newconn;
+            delete c;
             return;
         }
     }
     else
     {
-        if (newconn->mode == netascii)
-            newconn->tftpfile = fopen(newconn->filename, "r");
-        else if (newconn->mode == octet)
-            newconn->tftpfile = fopen(newconn->filename, "rb");
+        if (c->mode == netascii)
+            c->tftpfile = fopen(c->filename, "r");
+        else if (c->mode == octet)
+            c->tftpfile = fopen(c->filename, "rb");
 
-        if (newconn->tftpfile)
+        if (c->tftpfile)
         {
             log(WvLog::Debug, "File already exists; aborting.\n");
             send_err(6);
-            delete newconn;
+            delete c;
             return;
         }
 
-        if (newconn->mode == netascii)
-            newconn->tftpfile = fopen(newconn->filename, "w");
-        else if (newconn->mode == octet)
-            newconn->tftpfile = fopen(newconn->filename, "wb");
+        if (c->mode == netascii)
+            c->tftpfile = fopen(c->filename, "w");
+        else if (c->mode == octet)
+            c->tftpfile = fopen(c->filename, "wb");
 
-        if (!newconn->tftpfile)
+        if (!c->tftpfile)
         {
             log(WvLog::Debug, "Failed to open file for writing; aborting.\n");
             send_err(3);
-            delete newconn;
+            delete c;
             return;
         }
     }
 
-    newconn->send_oack = false;
-    newconn->oacklen = 0;
+    c->send_oack = false;
+    c->oacklen = 0;
     // Look for options.
     ch++;
     if (ch < packetsize)
     {
         // One or more options available for reading.
-        newconn->oack[0] = 0;
-        newconn->oack[1] = 6;
-        newconn->oacklen = 2;
-        char * oackp = &(newconn->oack[2]);
+        c->oack[0] = 0;
+        c->oack[1] = 6;
+        c->oacklen = 2;
+        char * oackp = &(c->oack[2]);
         char * optname;
         char * optvalue = NULL; // Give optvalue a dummy value so gcc doesn't 
                                 // complain about potential lack of
@@ -370,7 +417,7 @@ void WvTFTPServer::new_connection()
                             "Badly formed option %s.  Aborting.\n",
                             (i==0) ? "name" : "value");
                         send_err(8);
-                        delete newconn;
+                        delete c;
                         return;
                     }
                 }
@@ -383,149 +430,127 @@ void WvTFTPServer::new_connection()
 
             if (!strcmp(optname, "blksize"))
             {
-                newconn->blksize = atoi(optvalue);
-                if (newconn->blksize < 8 || newconn->blksize > 65464)
+                c->blksize = atoi(optvalue);
+                if (c->blksize < 8 || c->blksize > 65464)
                 {
                     WvString message = WvString(
                         "Request for blksize of %s is invalid.  Aborting.",
-                        newconn->blksize);
+                        c->blksize);
                     log(WvLog::Debug, "%s\n", message);
                     send_err(8, message);
-                    delete newconn;
+                    delete c;
                     return;
                 }
                 else
                 {
                     log("blksize option enabled (%s octets).\n",
-                        newconn->blksize);
+                        c->blksize);
                     strcpy(oackp, optname);
                     oackp += strlen(optname) + 1;
-                    newconn->oacklen += strlen(optname) + 1;
+                    c->oacklen += strlen(optname) + 1;
                     strcpy(oackp, optvalue);
                     oackp += strlen(optvalue) + 1;
-                    newconn->oacklen += strlen(optvalue) + 1;
+                    c->oacklen += strlen(optvalue) + 1;
                 }
             }
             else if (!strcmp(optname, "timeout"))
-            {
-                int newtimeout = atoi(optvalue);
-                if (newtimeout*1000 < tftp_tick || newtimeout > 255)
-                {
-                    log(WvLog::Debug4,
-                        "Request for timeout of %s is invalid.  Ignoring.",
-                        newtimeout);
-                }
-                else
-                {
-                    newconn->timeout = newtimeout;
-                    log("timeout option enabled (%s seconds).\n",
-                        newconn->timeout);
-                    strcpy(oackp, optname);
-                    oackp += strlen(optname) + 1;
-                    newconn->oacklen += strlen(optname) + 1;
-                    strcpy(oackp, optvalue);
-                    oackp += strlen(optvalue) + 1;
-                    newconn->oacklen += strlen(optvalue) + 1;
-                }
-            }
+                log(WvLog::Debug4,
+                    "Client request for timeout ignored.  Adaptive"
+                    " retransmission is better.\n");
             else if (!strcmp(optname, "tsize"))
             {
-                newconn->tsize = atoi(optvalue);
-                if (newconn->tsize < 0)
+                c->tsize = atoi(optvalue);
+                if (c->tsize < 0)
                 {
                     WvString message = WvString(
                         "Request for tsize of %s is invalid.  Aborting.",
-                        newconn->tsize);
+                        c->tsize);
                     log(WvLog::Debug, "%s\n", message);
                     send_err(8, message);
-                    delete newconn;
+                    delete c;
                     return;
                 }
                 else
                 {
-                    if (newconn->tsize == 0 && newconn->direction == tftpread)
+                    if (c->tsize == 0 && c->direction == tftpread)
                     {
-                        struct stat * tftpfilestat = new struct stat;
-                        if (stat(newconn->filename, tftpfilestat) != 0)
+                        struct stat tftpfilestat;
+                        if (stat(c->filename, &tftpfilestat) != 0)
                         {
                             WvString message = 
                                 "Cannot get stats for file.  Aborting.";
                            log(WvLog::Debug, "%s\n", message);
                            send_err(8, message);
-                           delete newconn;
+                           delete c;
                            return;
                         }
-                        newconn->tsize = tftpfilestat->st_size;
-                        delete tftpfilestat;
+                        c->tsize = tftpfilestat.st_size;
                     }
-                    WvString oacktsize = WvString("%s", newconn->tsize);
+                    WvString oacktsize = WvString("%s", c->tsize);
                     log("tsize option enabled (%s octets).\n",
-                        newconn->tsize);
+                        c->tsize);
                     strcpy(oackp, optname);
                     oackp += strlen(optname) + 1;
-                    newconn->oacklen += strlen(optname) + 1;
+                    c->oacklen += strlen(optname) + 1;
                     strcpy(oackp, oacktsize.edit());
                     oackp += oacktsize.len() + 1;
-                    newconn->oacklen += oacktsize.len() + 1;
+                    c->oacklen += oacktsize.len() + 1;
                 }
             }
         }
-        if (newconn->oacklen)
-            newconn->send_oack = true;
+        if (c->oacklen)
+            c->send_oack = true;
         else
-            delete newconn->oack;
+            delete c->oack;
         if (!strcmp(&packet[modestart], "netascii"))
-            newconn->mode = netascii;
+            c->mode = netascii;
         else if (!strcmp(&packet[modestart], "octet"))
-           newconn->mode = octet;
+           c->mode = octet;
         else if (!strcmp(&packet[modestart], "mail"))
-           newconn->mode = mail;
+           c->mode = mail;
         else
         { 
             log(WvLog::Debug, "Unknown mode string \"%s\"; aborting.\n",
                 &packet[modestart]);
             send_err(4);
-            delete newconn;
+            delete c;
             return;
         }
     }
 
-    newconn->stamp = time(0);
     alarm(tftp_tick);
-    conns.add(newconn, true);
-    if (newconn->direction == tftpread)
+    conns.add(c, true);
+    if (c->direction == tftpread)
     {
-        newconn->lastsent = 0;
-        newconn->unack = 1;
-        if (newconn->send_oack)
+        c->lastsent = 0;
+        c->unack = 1;
+        if (c->send_oack)
         {
             log(WvLog::Debug5, "Sending oack ");
-            memcpy(packet, newconn->oack, 512);
-            packetsize = newconn->oacklen;
+            memcpy(packet, c->oack, 512);
+            packetsize = c->oacklen;
             dump_pkt();
             write(packet, packetsize);
         }
         else
         {
-            log(WvLog::Debug5, "last sent: %s unack: %s pktclump: %s\n", newconn->lastsent,
-                newconn->unack, newconn->pktclump);
-            int pktsremain = static_cast<int>(newconn->lastsent) -
-                static_cast<int>(newconn->unack);
-            while (pktsremain < static_cast<int>(newconn->pktclump) - 1)
+            log(WvLog::Debug5, "last sent: %s unack: %s pktclump: %s\n",
+                c->lastsent, c->unack, c->pktclump);
+            int pktsremain = c->lastsent - c->unack;
+            while (pktsremain < c->pktclump - 1)
             {
                 log(WvLog::Debug5, "result is %s\n", pktsremain);
-                send_data(newconn);
-                if (newconn->donefile)
+                send_data(c);
+                if (c->donefile)
                     break;
-                pktsremain = static_cast<int>(newconn->lastsent) -
-                    static_cast<int>(newconn->unack);
+                pktsremain = c->lastsent - c->unack;
             }
         }
     }
     else
     {
-        newconn->lastsent = 65535;
-        send_ack(newconn);
+        c->lastsent = 65535;
+        send_ack(c);
     }
 }
 

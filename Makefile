@@ -1,7 +1,7 @@
 TOPDIR=..
 include $(TOPDIR)/wvrules.mk
 
-XPATH=.. ../wvstreams/include $(PKGINC)
+XPATH=.. ../wvstreams/include .. $(PKGINC)
 
 default: all
 

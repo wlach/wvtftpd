@@ -13,7 +13,7 @@
 class WvTFTPServer : public WvTFTPBase
 {
 public:
-    WvTFTPServer(WvConf &_cfg, int _tftp_tick, int _def_timeout);
+    WvTFTPServer(WvConf &_cfg, int _tftp_tick);
     void add_dir(WvString dir);
     void rm_dir(WvString dir);
     virtual ~WvTFTPServer();

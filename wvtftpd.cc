@@ -13,7 +13,6 @@ static bool want_to_die = false;
 
 void sighandler_die(int signum)
 {
-    fprintf(stderr, "Caught signal %d.\n", signum);
     want_to_die = true;
 }
 
@@ -55,7 +54,7 @@ int main(int argc, char **argv)
     }
 
     WvConf cfg("/etc/wvtftpd.conf");
-    WvTFTPServer tftps(cfg, 2, 6);
+    WvTFTPServer tftps(cfg, 100);
     WvLogConsole logdisp(2, lvl);
 
     while (tftps.isok() && !want_to_die)
