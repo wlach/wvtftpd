@@ -15,8 +15,7 @@ LIBS+=${EFENCE}
 
 wvtftp.a: wvtftpbase.o wvtftpserver.o
 
-wvtftpd-LIBS+= -L../wvstreams -lwvutils -lwvstreams -luniconf
-wvtftpd: wvtftp.a
+wvtftpd: wvtftp.a $(LIBUNICONF)
 
 clean:
 	rm -f wvtftpd
