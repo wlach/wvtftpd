@@ -303,7 +303,6 @@ void WvTFTPServer::new_connection()
 		"Filename after adding basedir and checking for alias is %s.\n",
                 c->filename);
         }
-        c->filename.unique();
     }
   
     if (c->direction == tftpread)
@@ -339,7 +338,6 @@ void WvTFTPServer::new_connection()
                 WvString newname = basedir;
                 newname.append(c->filename);
                 c->filename = newname;
-                c->filename.unique();
             }
             tftpaccess = validate_access(c, basedir);
             if (tftpaccess)
