@@ -35,8 +35,8 @@ void WvTFTPServer::execute()
         timeout = cfg.getint("TFTP", "Min Timeout", 100);
         if (!i->total_packets)
             timeout = 1000;
-        if ((2 * i->rtt / i->total_packets) > timeout)
-            timeout = 2 * i->rtt / i->total_packets;
+        if ((i->mult * i->mult * i->rtt / i->total_packets) > timeout)
+            timeout = i->mult * i->mult * i->rtt / i->total_packets;
 	
         struct timeval tv = wvtime();
         
@@ -54,6 +54,9 @@ void WvTFTPServer::execute()
                 i->total_packets, 
                 i->total_packets ? i->rtt / i->total_packets : 1000, timeout,
 		msecdiff(tv, *(i->pkttimes->get(expect_packet))));
+            if (i->mult < cfg.getint("TFTP", "Max Mult", 20))
+                i->mult++;
+            log("Increasing multiplier to %s.\n", i->mult * i->mult);
 
             if (++i->numtimeouts == max_timeouts)
             {
@@ -243,6 +246,7 @@ void WvTFTPServer::new_connection()
     c->numtimeouts = 0;
     c->rtt = 1000;
     c->total_packets = 1;
+    c->mult = 1;
     c->timed_out_ignore = -1;
     
     for (int i = 0; i < c->pktclump; i++)

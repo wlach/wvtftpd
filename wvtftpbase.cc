@@ -89,6 +89,7 @@ void WvTFTPBase::handle_packet()
             return;
         }
 
+        c->mult = 1;
         int small_blocknum = (unsigned char)(packet[2]) * 256 +
 	    	             (unsigned char)(packet[3]);
         int mult = c->unack / 65536;
@@ -174,6 +175,7 @@ void WvTFTPBase::handle_packet()
             return;
         }
 
+        c->mult = 1;
         int small_blocknum = (unsigned char)(packet[2]) * 256 +
 	    	             (unsigned char)(packet[3]);
         int mult = c->lastsent / 65536;

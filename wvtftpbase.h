@@ -65,6 +65,9 @@ public:
         size_t oacklen;             //     to resend it.
         int numtimeouts;
         int rtt;                    // "Total" round-trip time accumulator.
+        int mult;                   // base of the multiplier for timeout
+                                    //     backoffs.  The actual multiplier
+                                    //     is mult squared.
         PktTime *pkttimes;
         int total_packets;          // Number of correct packets used to
 	                            //     calculate average rtt.
