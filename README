@@ -1,0 +1,123 @@
+The Story of WvTFTPd
+or
+Why Would People Spend Time Writing a TFTP Server in this Day and Age?
+======================================================================
+
+WvTFTPd is a Trivial File Transfer Protocol server.
+
+Why would anyone write a TFTP server in this day and age, you ask?  Well, TFTP
+can be useful, but we at Net Integration Technologies thought that we could
+make TFTP *much* more useful.  And using our WvStreams library, this task was
+actually pretty simple.
+
+Here's a summary of what makes WvTFTPd special.
+
+- The synchronous request/acknowledgement protocol used by TFTP was
+  improved by cheating slightly and using a technique we call "Negative
+  Latency".  This is a little time consuming to explain, but basically
+  it means "sending data before the other end asks for it".  In case
+  cheating on protocols worries people (as it should), we have tested
+  our server with a couple different TFTP clients, and we haven't 
+  experienced any problems.  In addition, WvTFTPd ran 3.5 times faster 
+  than the other servers out there!
+
+- in the traditional TFTP servers, when a client requests a file, that exact
+  pathname needs to exist: even if tftpd is restricted to only serve files from
+  /tftpboot, it still requires the /tftpboot as part of the filename.  
+  Our server doesn't mind if the client uses the full path or just a 
+  filename (in which case the file is fetched from the default 
+  directory).
+
+- sometimes clients request the same file all the time, but you want to
+  change which file goes with that client. For example, you might want
+  to serve a different /tftpboot/kernel for different clients.  WvTFTPd 
+  makes this very easy to configure.
+
+- port management: traditionally, tftp daemons run from inetd even
+  though they use udp, which needs strange workarounds (flushing buffers
+  in odd places) and requires port number changes at bad times. ACK
+  messages from the client go to a different port than the original
+  request, which makes it hard to pass TFTP through a firewall.  WvTFTPd
+  handles all connections on the standard TFTP port (69), so you only 
+  need to forward that port to get TFTP access through a firewall.
+
+- "adaptive retransmission": The TFTP protocol specifies that either the server
+  or the client can timeout and resend requests.  This can cause some duplicate
+  traffic, especially if a client isn't written correctly and responds to old
+  DATA packets.  WvTFTP ignores all requests for retransmission and instead
+  will retransmit after not receiving an ACK for two times the average return
+  trip time so far.  A minimum timeout is also configurable.  This also applies
+  to TFTP writes.
+
+- large files: Some TFTP clients and servers can't handle files above 31 MB,
+  due to the fact that the block number will roll over.  WvTFTP isn't one of
+  them.  If you experience this problem, get a better client.
+
+Compiling and Installing WvTFTPd
+================================
+
+
+Configuring WvTFTPd
+===================
+
+The configuration file for WvTFTPd is /etc/wvtftpd.conf.  WvTFTPd will 
+run fine without any special configuration, but in order to take 
+advantage of some of its special features, you'll need to create a 
+configuration file.
+
+The first section of the configuration file might look like this:
+
+[TFTP]
+Base dir = /tftpboot
+Port = 6969
+Min Timeout = 500
+Prefetch = 3
+Readonly = 0
+Default File = kernel
+Strip Prefix = /tftp
+
+"Base dir" is the default directory.  If a client requests a file 
+without specifying the full path, the base dir is prepended.
+
+"Port" specifies the port WvTFTP should use.  The default is the regular TFTP port (69).
+
+"Min Timeout" gives the minimum timeout value in milliseconds.  WvTFTP will
+retransmit if it does not get an answer in twice the average RTT thus far or
+the "Min Timeout" value, whichever is greater.
+
+"Prefetch" specifies the amount of negative latency, that is, how many
+packets are sent out at a time.
+
+"Readonly" determines if TFTP writes are allowed.  The default is 0 (writes
+not allowed).
+
+"Default File" is the file sent to a client if the requested file is 
+unavailable.
+
+The path given as "Strip Prefix" is automatically stripped from the 
+beginning of any client requests.  This is done before adding base dir.
+
+The second section is [TFTP Aliases].  It contains a list of filename
+overrides and per-client filename overrides. Regular filename overrides
+are of the form "filename = newfilename". Per-client filename overrides
+look like "IPAddress filename = clientnewfilename". Per-client filename
+overrides take precedence over regular overrides.
+
+For example:
+
+[TFTP Aliases]
+image = image2_4.img
+192.168.0.43 image = image2_5b.img
+
+In this instance, if a user at 192.168.0.43 attempted to download the 
+file "image", the file "image2_5b.img" would actually be sent.  Users 
+from other machines would get the file "image2_4.img" when they request 
+"image".
+
+The third and fourth sections are [Registered TFTP Clients] and [New
+TFTP Clients].  [Registered TFTP Clients] holds a list of client IP
+addresses ("192.168.0.43 = 1") that are known to the server.  When a
+client attempts to connect, if its address is not in [Registered TFTP
+Clients], it is added to [New TFTP Clients]. This has no function inside
+of WvTFTP itself but might be useful in some situations (such as in our 
+Net Integrators).

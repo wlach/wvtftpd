@@ -1,0 +1,14 @@
+Source: wvtftpd
+Section: net
+Priority: optional
+Maintainer: Patrick Patterson <ppatters@debian.org>
+Build-Depends: debhelper (>> 3.0.0), libwvstreams-dev
+Standards-Version: 3.5.4.0
+
+Package: wvtftpd
+Architecture: any
+Depends: libwvstreams3, ${shlibs:Depends}
+Description: Scarily FAST Trivial FTP Server
+ TFTP Server that implements "Negative Latency" to deliver files and boot
+ images in an incredibly fast manner. Also configurable to help in large
+ NetBoot installations.

@@ -1,0 +1,17 @@
+wvtftpd (0.2) unstable; urgency=low
+
+  * Synchronise with libwvstreams release
+  * Obscure bug where wvtftpd would crash when the requesting entity was an
+    etherboot host has been fixed.
+  * Logs of bugs where wvtftpd would crash under load has been fixed.
+  * Fixes to handle PXE Boot options
+  * Initial Debian release (Closes: #138949)
+
+ -- Patrick Patterson <ppatters@debian.org>  Mon, 29 Jul 2002 18:39:51 -0400
+
+wvtftpd (0.1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Patrick Patterson <ppatters@nit.ca>  Mon, 28 Jan 2002 13:04:52 -0500
+
