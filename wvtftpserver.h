@@ -8,18 +8,18 @@
 #define __WVTFTPSERVER_H
 
 #include "wvtftpbase.h"
-#include "wvconf.h"
+#include "uniconf.h"
 
 class WvTFTPServer : public WvTFTPBase
 {
 public:
-    WvTFTPServer(WvConf &_cfg, int _tftp_tick);
+    WvTFTPServer(UniConf &_cfg, int _tftp_tick);
     void add_dir(WvString dir);
     void rm_dir(WvString dir);
     virtual ~WvTFTPServer();
 
 private:
-    WvConf &cfg;
+    UniConf &cfg;
     virtual void execute();
     virtual void new_connection();
     int validate_access(TFTPConn *c, WvString &basedir);

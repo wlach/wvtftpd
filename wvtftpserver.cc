@@ -8,8 +8,8 @@
 #include <sys/stat.h>
 #include <ctype.h>
 
-WvTFTPServer::WvTFTPServer(WvConf &_cfg, int _tftp_tick)
-    : WvTFTPBase(_tftp_tick, _cfg.getint("TFTP", "Port", 69)), cfg(_cfg)
+WvTFTPServer::WvTFTPServer(UniConf &_cfg, int _tftp_tick)
+    : WvTFTPBase(_tftp_tick, _cfg["TFTP"]["Port"].getint(69)), cfg(_cfg)
 {
     log(WvLog::Info, "WvTFTP listening on %s.\n", *local());
 }
@@ -32,7 +32,7 @@ void WvTFTPServer::execute()
         int expect_packet = (i->direction == tftpwrite) ? i->lastsent :
             i->unack;
         connscount++;
-        timeout = cfg.getint("TFTP", "Min Timeout", 100);
+        timeout = cfg["TFTP"]["Min Timeout"].getint(100);
         if (!i->total_packets)
             timeout = 1000;
         if ((i->mult * i->mult * i->rtt / i->total_packets) > timeout)
@@ -56,13 +56,13 @@ void WvTFTPServer::execute()
                 i->total_packets ? i->rtt / i->total_packets : 1000, timeout,
 		msecdiff(tv, *(i->pkttimes->get(expect_packet))));
             if ((i->mult + 1) * (i->mult + 1) * i->rtt / i->total_packets <
-		(time_t)cfg.getint("TFTP", "Max Timeout", 5000))
+		(time_t)cfg["TFTP"]["Max Timeout"].getint(5000))
                 i->mult++;
             else
                 log("Max timeout reached.\n");
             log("Increasing multiplier to %s.\n", i->mult * i->mult);
 
-            if (i->numtimeouts == cfg.getint("TFTP", "Max Timeout Count", 10))
+            if (i->numtimeouts == cfg["TFTP"]["Max Timeout Count"].getint(10))
             {
                 log(WvLog::Debug,"Max timeouts reached; aborting transfer.\n");
                 send_err(0, "Too many timeouts.");
@@ -173,11 +173,12 @@ void WvTFTPServer::new_connection()
     TFTPConn *c = new TFTPConn;
     c->remote = remaddr;
     WvIPAddr clientportless = static_cast<WvIPAddr>(c->remote);
+    UniConfKey clientportlessk = UniConfKey(clientportless);
 
-    if (!cfg.getint("Registered TFTP Clients", clientportless,
-             cfg.getint("New TFTP Clients", clientportless, false)))
+    if (!cfg["Registered TFTP Clients"][clientportlessk].getint(
+             cfg["New TFTP Clients"][clientportlessk].getint(false)))
     {
-        cfg.setint("New TFTP Clients", clientportless, true);
+        cfg["New TFTP Clients"][clientportlessk].setint(true);
     }
 
     // Make sure the filename and mode actually end with nulls.
@@ -213,7 +214,7 @@ void WvTFTPServer::new_connection()
 
     c->direction = static_cast<TFTPDir>((int)pktcode-1);
     log(WvLog::Debug4, "Direction is %s.\n", c->direction);
-    if ((c->direction == tftpwrite) && cfg.getint("TFTP", "Readonly", 1))
+    if ((c->direction == tftpwrite) && cfg["TFTP"]["Readonly"].getint(1))
     {
         log(WvLog::Warning, "Writes are not permitted.\n");
         send_err(2);
@@ -243,7 +244,7 @@ void WvTFTPServer::new_connection()
 
     c->blksize = 512;
     c->tsize = 0;
-    c->pktclump = cfg.getint("TFTP", "Prefetch", 3);
+    c->pktclump = cfg["TFTP"]["Prefetch"].getint(3);
     c->pkttimes = new PktTime(c->pktclump);
     c->unack = 0;
     c->donefile = false;
@@ -263,7 +264,7 @@ void WvTFTPServer::new_connection()
     // [TFTP Aliases] entries.  If nothing is found, then add [TFTP]"Base dir"
     // and try again.
 
-    WvString strip_prefix = cfg.get("TFTP", "Strip prefix", "");
+    WvString strip_prefix = cfg["TFTP"]["Strip prefix"].get();
     if (strip_prefix != "")
     {
         if (strip_prefix[strip_prefix.len() -1] != '/')
@@ -277,14 +278,13 @@ void WvTFTPServer::new_connection()
         }
     }
     log(WvLog::Debug5, "Filename after stripping is %s.\n", c->filename);
-    WvString alias = cfg.get("TFTP Aliases", WvString("%s %s", clientportless,
-            c->filename), cfg.get("TFTP Aliases", c->filename,
-            ""));
+    WvString alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
+            c->filename)].get(cfg["TFTP Aliases"][c->filename].get());
     log(WvLog::Debug5, "Alias is %s.\n", alias);
     if (alias != "")
         c->filename = alias;
 
-    WvString basedir = cfg.get("TFTP", "Base dir", "/tftpboot/");
+    WvString basedir = cfg["TFTP"]["Base dir"].get("/tftpboot/");
     if (basedir[basedir.len() -1] != '/')
         basedir.append("/");
 
@@ -301,9 +301,9 @@ void WvTFTPServer::new_connection()
             log(WvLog::Debug5,
 		"Filename before 2nd alias check is %s.\n", c->filename);
             WvString newname2(
-		   cfg.get("TFTP Aliases", 
-			   WvString("%s %s", clientportless, c->filename),
-			   cfg.get("TFTP Aliases", c->filename, c->filename))
+		   cfg["TFTP Aliases"][ 
+			   WvString("%s %s", clientportless, c->filename)].get(
+			   cfg["TFTP Aliases"][c->filename].get(c->filename))
 		   );
 	    c->filename = newname2;
 	    log(c->filename);
@@ -328,7 +328,7 @@ void WvTFTPServer::new_connection()
         if (tftpaccess == 1)
         {
             // File not found.  Check for default file.
-            c->filename = cfg.get("TFTP", "Default File", "");
+            c->filename = cfg["TFTP"]["Default File"].get("");
             if (c->filename == "")
             {
                 log(WvLog::Debug, "File not found.  Aborting.\n");
@@ -336,8 +336,8 @@ void WvTFTPServer::new_connection()
                 delete c;
                 return; 
             }
-            alias = cfg.get("TFTP Aliases", WvString("%s %s", clientportless,
-                c->filename), cfg.get("TFTP Aliases", c->filename,
+            alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
+                c->filename)].get(cfg["TFTP Aliases"][c->filename].get(
                 ""));
             if (alias != "")
                 c->filename = alias;

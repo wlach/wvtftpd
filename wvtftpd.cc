@@ -4,6 +4,7 @@
  *
  * This is the WvTFTP server daemon.
  */
+#include "uniconf.h"
 #include "wvtftpserver.h"
 #include "wvlogrcv.h"
 #include "wvver.h"
@@ -55,7 +56,8 @@ int main(int argc, char **argv)
     }
 
     WvLog log("WvTFTP", WvLog::Critical);
-    WvConf cfg("/etc/wvtftpd.conf");
+    //WvConf cfg("/etc/wvtftpd.conf");
+    UniConfRoot cfg("ini:/etc/wvtftpd.conf");
     WvTFTPServer tftps(cfg, 100);
     WvLogConsole logdisp(2, lvl);
 
@@ -63,10 +65,11 @@ int main(int argc, char **argv)
     {
 	if (tftps.select(1000))
 	    tftps.callback();
-	else
-	    cfg.flush();
+/*	else
+	    cfg.flush();*/
     }
     if (!tftps.isok() && tftps.geterr())
         log("%s.\n", strerror(tftps.geterr()));
-    cfg.save();
+//    cfg.save();
+    cfg.commit();
 }
