@@ -47,7 +47,7 @@ struct timeval *PktTime::get(int pktnum)
 }
 
 WvTFTPBase::WvTFTPBase(int _tftp_tick, int port)
-    : WvUDPStream(port, WvIPPortAddr()), conns(5), log("WvTFTP", WvLog::Debug4),
+    : WvUDPStream(port, WvIPPortAddr()), conns(5), log("WvTFTP", WvLog::Debug),
       tftp_tick(_tftp_tick)
 {
 }
@@ -71,7 +71,7 @@ void WvTFTPBase::handle_packet()
 
     if (opcode == ERROR)
     {
-        log(WvLog::Debug, "Received error packet; aborting.\n");
+        log(WvLog::Warning, "Received error packet; aborting.\n");
         conns.remove(c);
         return;
     }
@@ -81,7 +81,7 @@ void WvTFTPBase::handle_packet()
         // Packet should be an ack.
         if (opcode != ACK)
         {
-            log(WvLog::Debug, "Expected ACK (read); aborting.\n");
+            log(WvLog::Warning, "Expected ACK (read); aborting.\n");
             send_err(4);
             conns.remove(c);
             return;
@@ -127,7 +127,7 @@ void WvTFTPBase::handle_packet()
                 struct timeval tv = wvtime();
 		
                 time_t rtt = msecdiff(tv, *(c->pkttimes->get(blocknum)));
-                log("rtt is %s.\n", rtt);
+                log(WvLog::Debug4, "rtt is %s.\n", rtt);
 		
                 c->rtt += rtt;
                 c->total_packets++;
@@ -138,8 +138,8 @@ void WvTFTPBase::handle_packet()
             {
                 // transfer completed if we haven't sent any packets last
                 // time we acked, and this is the right ack.
-                log(WvLog::Debug, "File transferred successfully.\n");
-                log(WvLog::Debug, "Average rtt was %s ms.\n", c->rtt /
+                log(WvLog::Info, "File transferred successfully.\n");
+                log(WvLog::Info, "Average rtt was %s ms.\n", c->rtt /
 		    blocknum);
 
 		if (c->alias_once)
@@ -171,7 +171,7 @@ void WvTFTPBase::handle_packet()
         // Packet should be data.
         if (opcode != DATA)
         {
-            log(WvLog::Debug, "Badly formed packet (write); aborting.\n");
+            log(WvLog::Warning, "Badly formed packet (write); aborting.\n");
             send_err(4);
             conns.remove(c);
             return;
@@ -204,8 +204,8 @@ void WvTFTPBase::handle_packet()
 
             if (data_packetsize < c->blksize + 4)
             {
-                log(WvLog::Debug, "File transferred successfully.\n");
-                log(WvLog::Debug, "Average rtt was %s ms.\n", c->rtt /
+                log(WvLog::Info, "File transferred successfully.\n");
+                log(WvLog::Info, "Average rtt was %s ms.\n", c->rtt /
 		    blocknum);
 		conns.remove(c);
 		c = NULL;
@@ -256,6 +256,7 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend)
         packetsize += datalen;
 //        log(WvLog::Debug5, "Sending ");
         dump_pkt();
+        setdest(c->remote);  // often redundant (after reading), but safer
         write(packet, packetsize);
 
         struct timeval tv = wvtime();
@@ -279,7 +280,7 @@ void WvTFTPBase::send_ack(TFTPConn *c, bool resend)
     write(packet, packetsize); 
 
     struct timeval tv = wvtime();
-    log("Setting %s\n", c->lastsent);
+    log(WvLog::Debug4, "Setting %s\n", c->lastsent);
     c->pkttimes->set(c->lastsent, tv);
 }
 

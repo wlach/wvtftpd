@@ -22,8 +22,21 @@ private:
     UniConf &cfg;
     virtual void execute();
     virtual void new_connection();
-    int validate_access(TFTPConn *c, WvString &basedir);
+    void check_timeouts();
+    int validate_access(TFTPConn *c);
     WvString check_aliases(TFTPConn *c);
+
+    /** Returns true if good filename after checking for aliases, basedir, and default file.
+     * Puts new filename in c->filename.
+     */
+    bool check_filename(TFTPConn *c);
+
+    /** Finds and processes TFTP options.
+     * Sets TFTPConn options and sends option ACKs.
+     * Returns the packet index of the byte following the last option
+     * value.
+     */
+    unsigned int process_options(TFTPConn *c, unsigned int opts_start);
 };
 
-#endif // __WVTFTPS_H
+#endif // __WVTFTPSERVER_H

@@ -31,7 +31,7 @@ static void usage(char *argv0)
 
 int main(int argc, char **argv)
 {
-    WvLog::LogLevel lvl = WvLog::Debug1;
+    WvLog::LogLevel lvl = WvLog::Info;
     int c;
     signal(SIGTERM, sighandler_die);
     signal(SIGHUP, sighandler_die);
@@ -41,13 +41,13 @@ int main(int argc, char **argv)
         switch(c)
         {
         case 'd':
-            if (lvl <= WvLog::Debug1)
-                lvl = WvLog::Debug4;
+            if (lvl <= WvLog::Info)
+                lvl = WvLog::Debug1;
             else
-                lvl = WvLog::Debug5;
+                lvl = WvLog::Debug4;
             break;
         case 'V':
-            fprintf(stderr, "WvTFTPd version %s\n",WVTFTP_VER_STRING);
+            fprintf(stderr, "WvTFTPd version %s\n", WVTFTP_VER_STRING);
             exit(2);
         case '?':
             usage(argv[0]);
@@ -56,7 +56,6 @@ int main(int argc, char **argv)
     }
 
     WvLog log("WvTFTP", WvLog::Critical);
-    //WvConf cfg("/etc/wvtftpd.conf");
     UniConfRoot cfg("ini:/etc/wvtftpd.conf");
     WvTFTPServer tftps(cfg, 100);
     WvLogConsole logdisp(2, lvl);
@@ -65,11 +64,13 @@ int main(int argc, char **argv)
     {
 	if (tftps.select(1000))
 	    tftps.callback();
-/*	else
-	    cfg.flush();*/
     }
     if (!tftps.isok() && tftps.geterr())
+    {
         log("%s.\n", strerror(tftps.geterr()));
-//    cfg.save();
+        return tftps.geterr();
+    }
+
     cfg.commit();
+    return 0;
 }
