@@ -26,8 +26,10 @@ WVSTREAMS_INC=$(shell pkg-config --variable=includedir libwvstreams)
 # hacky... but we only need the static xplc library, and wvrules.mk wants to
 # link with the dynamic, which isn't installed by default with WvStreams.
 with_xplc=no
+LIBWVXPLC=$(shell pkg-config --libs wvxplc)
 else
 XPATH=..
+LIBWVXPLC=
 endif
 
 BINDIR=${prefix}/sbin
@@ -43,7 +45,7 @@ LIBS+=${EFENCE}
 
 wvtftp.a: wvtftpbase.o wvtftpserver.o
 
-wvtftpd-LIBS = $(LIBUNICONF) $(shell pkg-config --libs wvxplc)
+wvtftpd-LIBS = $(LIBUNICONF) $(LIBWVXPLC)
 wvtftpd: wvtftp.a
 
 install: all
