@@ -43,6 +43,7 @@ void WvTFTPServer::execute()
         if (msecdiff(tv, *(i->pkttimes->get(expect_packet))) >= timeout)
         {
             i->numtimeouts++;
+
             log(WvLog::Debug1,
                 "Timeout #%s (%s ms) on block %s from connection to %s.\n",
 		i->numtimeouts, timeout, expect_packet, i->remote);
@@ -61,6 +62,16 @@ void WvTFTPServer::execute()
             else
                 log("Max timeout reached.\n");
             log("Increasing multiplier to %s.\n", i->mult * i->mult);
+
+            // If the client times out too many times, stop sending it so much
+            // at once - it could be choking on data.
+            if ((i->numtimeouts % 5) == 0 && i->pktclump > 1) 
+            {
+                i->pktclump--;
+                log(WvLog::Debug1, 
+                        "Too many timeouts, reducing prefetch to %s\n", 
+                        i->pktclump);
+            }
 
             if (i->numtimeouts == cfg["TFTP/Max Timeout Count"].getint(1000))
             {
