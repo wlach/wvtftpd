@@ -5,6 +5,7 @@
  * This is the WvTFTP server daemon.
  */
 #include "wvtftpserver.h"
+#include "wvlogrcv.h"
 #include <signal.h>
 
 static bool want_to_die = false;
@@ -22,10 +23,11 @@ int main()
     signal(SIGINT, sighandler_die);
     WvConf cfg("/etc/wvtftpd.conf");
     WvTFTPServer tftps(cfg, 30, 30);
+    WvLogConsole logdisp(2, WvLog::Debug3);
 
     while (tftps.isok() && !want_to_die)
     {
-	if (tftps.select(0))
+	if (tftps.select(1000))
 	    tftps.callback();
     }
     if (!tftps.isok())

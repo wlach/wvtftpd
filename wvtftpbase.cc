@@ -23,8 +23,7 @@ void WvTFTPBase::set_max_timeouts(int _max_timeouts)
 void WvTFTPBase::dump_pkt()
 {
     log(WvLog::Debug5, "Packet:\n");
-    log(WvLog::Debug5, hexdump_buffer(reinterpret_cast<unsigned char *>(packet),
-        packetsize));
+    //log(WvLog::Debug5, hexdump_buffer(packet, packetsize));
 }
 
 void WvTFTPBase::handle_packet()
