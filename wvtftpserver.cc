@@ -173,7 +173,7 @@ void WvTFTPServer::new_connection()
     newconn->timeout = def_timeout;
     newconn->blksize = 512;
     newconn->tsize = 0;
-    newconn->pktclump = 3;
+    newconn->pktclump = 5;
     newconn->unack = 0;
     newconn->donefile = false;
     newconn->numtimeouts = 0;
