@@ -263,6 +263,21 @@ void WvTFTPServer::new_connection()
                 delete newconn;
                 return; 
             }
+            if (newconn->filename[0] != '/')
+            {
+                WvString newname = basedir;
+                newname.append(newconn->filename);
+                newconn->filename = newname;
+                newconn->filename.unique();
+            }
+            tftpaccess = validate_access(newconn, basedir);
+            if (tftpaccess)
+            {
+                log(WvLog::Debug, "File access failed (error %s).\n", tftpaccess);
+                send_err(tftpaccess);
+                delete newconn;
+                return;
+            }
         }
         else
         {
