@@ -143,7 +143,7 @@ void WvTFTPBase::handle_packet()
 		    blocknum);
 
 		if (c->alias_once)
-		    c->alias.set(WvString());
+		    c->alias.remove();
 
 		conns.remove(c);
 		c = NULL;

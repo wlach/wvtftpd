@@ -23,6 +23,7 @@ private:
     virtual void execute();
     virtual void new_connection();
     int validate_access(TFTPConn *c, WvString &basedir);
+    WvString check_aliases(TFTPConn *c);
 };
 
 #endif // __WVTFTPS_H

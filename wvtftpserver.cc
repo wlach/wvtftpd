@@ -168,6 +168,44 @@ int WvTFTPServer::validate_access(TFTPConn *c, WvString &basedir)
     return 0; 
 }
 
+
+WvString WvTFTPServer::check_aliases(TFTPConn *c)
+{
+    if (!c)
+	return WvString("");
+
+    bool alias_once_fn_only = false;
+    WvIPAddr clientportless = static_cast<WvIPAddr>(c->remote);
+
+    WvString alias(cfg["TFTP Alias Once"][WvString("%s %s", clientportless,
+						   c->filename)].get(""));
+    if (!alias)
+    {
+	alias = cfg["TFTP Alias Once"][c->filename].get("");
+	alias_once_fn_only = true;
+    }
+
+    if (!!alias)
+    {
+	log(WvLog::Debug5, "Alias once is \"%s\".\n", alias);
+	c->alias_once = true;
+	c->alias = cfg["TFTP Alias Once"][WvString("%s%s",
+						   alias_once_fn_only ?
+						   WvString("") :
+						   WvString("%s ", clientportless),
+						   c->filename)];
+    }
+    else
+    {
+	alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
+					     c->filename)].get(cfg["TFTP Aliases"][c->filename].get(""));
+	log(WvLog::Debug5, "Alias is \"%s\".\n", alias);
+    }
+
+    return alias;
+}
+
+
 void WvTFTPServer::new_connection()
 {
     log(WvLog::Debug, "New connection from %s\n", remaddr);
@@ -290,23 +328,9 @@ void WvTFTPServer::new_connection()
     }
     log(WvLog::Debug5, "Filename after stripping is %s.\n", c->filename);
 
-    WvString alias = cfg["TFTP Alias Once"][WvString("%s %s", clientportless,
-						     c->filename)].get();
+    WvString alias(check_aliases(c));
 
-    if (alias)
-    {
-	c->alias_once = true;
-	c->alias = cfg["TFTP Alias Once"][WvString("%s %s", clientportless,
-						   c->filename)];
-	log(WvLog::Debug5, "Alias once is \"%s\".\n", alias);
-    }
-    else
-    {
-	alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
-					     c->filename)].get(cfg["TFTP Aliases"][c->filename].get(""));
-	log(WvLog::Debug5, "Alias is \"%s\".\n", alias);
-    }
-    if (alias != "")
+    if (!!alias)
         c->filename = alias;
 
     WvString basedir = cfg["TFTP"]["Base dir"].get("/tftpboot/");
@@ -325,13 +349,9 @@ void WvTFTPServer::new_connection()
             // Check for aliases again
             log(WvLog::Debug5,
 		"Filename before 2nd alias check is %s.\n", c->filename);
-            WvString newname2(
-		   cfg["TFTP Aliases"][ 
-			   WvString("%s %s", clientportless, c->filename)].get(
-			   cfg["TFTP Aliases"][c->filename].get(c->filename))
-		   );
-	    c->filename = newname2;
-	    log(c->filename);
+	    alias = check_aliases(c);
+	    if (!!alias)
+		c->filename = alias;
             log(WvLog::Debug5,
 		"Filename after adding basedir and checking for alias is %s.\n",
                 c->filename);
@@ -361,9 +381,8 @@ void WvTFTPServer::new_connection()
                 delete c;
                 return; 
             }
-            alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
-                c->filename)].get(cfg["TFTP Aliases"][c->filename].get(
-                ""));
+            alias = check_aliases(c);
+
             if (alias != "")
                 c->filename = alias;
             if (c->filename[0] != '/')
