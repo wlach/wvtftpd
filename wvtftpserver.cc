@@ -597,13 +597,14 @@ unsigned int WvTFTPServer::process_options(TFTPConn *c, unsigned int opts_start)
                     return 0;
                 }
 
-                log(WvLog::Debug, "Blksize option enabled (%s octets).\n", c->blksize);
+		WvString oackblksize(c->blksize);
+                log(WvLog::Debug, "Blksize option enabled (%s octets).\n", oackblksize);
                 strcpy(oackp, optname);
                 oackp += strlen(optname) + 1;
                 c->oacklen += strlen(optname) + 1;
-                strcpy(oackp, optvalue);
-                oackp += strlen(optvalue) + 1;
-                c->oacklen += strlen(optvalue) + 1;
+                strcpy(oackp, oackblksize);
+		oackp += oackblksize.len() + 1;
+		c->oacklen += oackblksize.len() + 1;
             }
             else if (!strcmp(optname, "timeout"))
                 log(WvLog::Debug,
@@ -635,12 +636,12 @@ unsigned int WvTFTPServer::process_options(TFTPConn *c, unsigned int opts_start)
                     c->tsize = tftpfilestat.st_size;
                 }
 
-                WvString oacktsize = WvString("%s", c->tsize);
-                log(WvLog::Debug, "Tsize option enabled (%s octets).\n", c->tsize);
+                WvString oacktsize(c->tsize);
+                log(WvLog::Debug, "Tsize option enabled (%s octets).\n", oacktsize);
                 strcpy(oackp, optname);
                 oackp += strlen(optname) + 1;
                 c->oacklen += strlen(optname) + 1;
-                strcpy(oackp, oacktsize.edit());
+                strcpy(oackp, oacktsize);
                 oackp += oacktsize.len() + 1;
                 c->oacklen += oacktsize.len() + 1;
             }

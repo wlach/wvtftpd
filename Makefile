@@ -16,14 +16,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ifeq ($(TOPDIR),)
+# Change the prefix below if you don't want the same prefix as libwvstreams'.
+prefix=$(shell pkg-config --variable=prefix libwvstreams)
 TOPDIR=.
-with_xplc=$(shell pkg-config --variable=libdir wvxplc)
 WVSTREAMS_SRC=.
 WVSTREAMS_LIB=$(shell pkg-config --variable=libdir libwvstreams)
 WVSTREAMS_INC=$(shell pkg-config --variable=includedir libwvstreams)
+
+# hacky... but we only need the static xplc library, and wvrules.mk wants to
+# link with the dynamic, which isn't installed by default with WvStreams.
+with_xplc=no
 else
 XPATH=..
 endif
+
+BINDIR=${prefix}/sbin
+MANDIR=${prefix}/share/man
 
 include $(TOPDIR)/wvrules.mk
 
@@ -35,8 +43,21 @@ LIBS+=${EFENCE}
 
 wvtftp.a: wvtftpbase.o wvtftpserver.o
 
-wvtftpd-LIBS = $(LIBUNICONF)
+wvtftpd-LIBS = $(LIBUNICONF) $(shell pkg-config --libs wvxplc)
 wvtftpd: wvtftp.a
+
+install: all
+	[ -d ${BINDIR}      ] || install -d ${BINDIR}
+	[ -d ${MANDIR}      ] || install -d ${MANDIR}
+	install -m 0755 wvtftpd ${BINDIR}
+	install -m 0644 wvtftpd.8 ${MANDIR}/man8
+
+uninstall:
+	rm -f ${BINDIR}/wvtftpd
+	rm -f ${MANDIR}/man8/wvtftpd.8
 
 clean:
 	rm -f wvtftpd
+
+.PHONY: clean all install uninstall
+

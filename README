@@ -56,6 +56,24 @@ Here's a summary of what makes WvTFTPd special.
 Compiling and Installing WvTFTPd
 ================================
 
+You need to have a recent version of the WvStreams library and header files
+installed on your system to use WvTFTPd.  We recommend version 4.0 or higher.
+You can download WvStreams from
+
+    http://open.nit.ca/wiki/index.php?page=WvStreams
+
+You also require the "pkg-config" program, unless you want to modify the
+Makefile and insert the appropriate paths.
+
+WvTFTPd installs itself into <prefix>/sbin and the man page into
+<prefix>/man, where <prefix> is the same prefix to which WvStreams is
+installed (typically "/usr" or "/usr/local").  Again, edit the Makefile if
+you wish to change this.  Eventually WvTFTPd might have a configure script
+to do this.
+
+To compile WvTFTPd, untar the package to somewhere like /usr/src and type
+"make".  If there were no errors, type "make install".  Root privileges are,
+of course, required to install the program.
 
 Configuring WvTFTPd
 ===================
