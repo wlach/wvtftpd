@@ -1,6 +1,6 @@
 /*
  * Worldvisions Weaver Software:
- *   Copyright (C) 1997-2002 Net Integration Technologies, Inc.
+ *   Copyright (C) 1997-2003 Net Integration Technologies, Inc.
  *
  * WvTFTPServer.  This class implements the server end of WvTFTP.
  */

@@ -11,12 +11,12 @@ default: all
 
 all: wvtftp.a wvtftpd
 
-LIBS = ${EFENCE}
+LIBS+=${EFENCE}
 
 wvtftp.a: wvtftpbase.o wvtftpserver.o
 
-wvtftpd-LIBS= -L../wvstreams -lwvutils -lwvstreams
+wvtftpd-LIBS+= -L../wvstreams -lwvutils -lwvstreams
 wvtftpd: wvtftp.a
 
 clean:
-	rm -f wvtftpd backup.a *.o
+	rm -f wvtftpd
