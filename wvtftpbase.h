@@ -20,6 +20,21 @@
 const int MAX_PACKET_SIZE = 65535;
 const bool WVTFTP_DEBUG = false;
 
+class PktTime
+{
+public:
+    PktTime(int _pktclump);
+    ~PktTime();
+    
+    void set(int pktnum, struct timeval &tv);
+    struct timeval *get(int pktnum);
+
+private:
+    int idx;
+    int pktclump;
+    struct timeval *times;
+};
+
 class WvTFTPBase : public WvUDPStream
 {
 public:

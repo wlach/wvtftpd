@@ -5,6 +5,52 @@
 #include "wvtftpbase.h"
 #include "strutils.h"
 
+PktTime::PktTime(int _pktclump)
+{
+    pktclump = _pktclump;
+    times = new struct timeval[pktclump];
+    idx = 0;
+}
+
+PktTime::~PktTime()
+{
+    delete[] times;
+}
+
+void PktTime::set(int pktnum, struct timeval &tv)
+{
+    assert(pktnum >= idx);
+    if ((pktnum - idx) >= pktclump)
+    {
+        int d = pktnum - pktclump - idx + 1;
+        idx += d;
+        if (d < pktclump && d > 0)
+        {
+            memmove(times, times + d, (pktclump - d) * sizeof(struct
+                timeval));
+            memset(times + pktclump - d, 0, d * sizeof(struct timeval));
+        }
+        else if (d >= pktclump)
+            memset(times, 0, pktclump * sizeof(struct timeval));
+    }
+    struct timezone tz;
+    int res = gettimeofday(&times[pktnum - idx], &tz);
+    if (res != 0)
+    {
+        WvLog log("PktTime", WvLog::Error);
+        log("gettimeofday() failed!\n");
+        times[pktnum - idx].tv_sec = 0;
+        times[pktnum - idx].tv_usec = 0;
+    } 
+}
+
+struct timeval *PktTime::get(int pktnum)
+{
+    if (pktnum < idx || pktnum > (idx + pktclump))
+        return NULL;
+    return &times[pktnum - idx];
+}
+
 WvTFTPBase::WvTFTPBase(int _tftp_tick, int _def_timeout, int port = 0)
     : WvUDPStream(port, WvIPPortAddr()), conns(5), log("WvTFTP", WvLog::Debug4),
       tftp_tick(_tftp_tick*1000), def_timeout(_def_timeout), max_timeouts(7)
