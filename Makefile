@@ -1,11 +1,14 @@
-ifeq ($(TOPDIR),)                                                                              
+ifeq ($(TOPDIR),)
 TOPDIR=.
-PKGINC=/usr/include/wvstreams /usr/local/include/wvstreams
+with_xplc=$(shell pkg-config --variable=libdir wvxplc)
+WVSTREAMS_SRC=.
+WVSTREAMS_LIB=$(shell pkg-config --variable=libdir libwvstreams)
+WVSTREAMS_INC=$(shell pkg-config --variable=includedir libwvstreams)
+else
+XPATH=..
 endif
 
 include $(TOPDIR)/wvrules.mk
-
-XPATH=.. ../wvstreams/include $(PKGINC)
 
 default: all
 
@@ -15,7 +18,8 @@ LIBS+=${EFENCE}
 
 wvtftp.a: wvtftpbase.o wvtftpserver.o
 
-wvtftpd: wvtftp.a $(LIBUNICONF)
+wvtftpd-LIBS = $(LIBUNICONF)
+wvtftpd: wvtftp.a
 
 clean:
 	rm -f wvtftpd

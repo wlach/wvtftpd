@@ -16,49 +16,46 @@ When
 .B wvtftpd
 starts, it first loads its configuration from
 .IR /etc/wvtftpd.conf ,
-which contains basic information about which files you want transfered, who
+which contains basic information about which files you want transferred, who
 should get those files, etc.
 .PP
 .SH OPTIONS
 There are only a couple of options currently recognised by
 .BR wvtftpd .
 .TP
-.I "\-V"
+.B "\-V"
 Prints the current
 .B wvtftpd
 version information and exits.
 .TP
-.I "\-d"
+.B "\-d"
 Displays debug information for troubleshooting
 .BR wvtftpd
 .TP
-.I "\-dd"
+.B "\-dd"
 Displays a lot of debug information for troubleshooting
 .BR wvtftpd.
 Use this option when reporting any bugs or problems with the program.
 .PP
 .SH BUGS
-Probably very few, but if you find any, please report them to 
-.BR <wvtftpd@nit.ca> .
-.PP
-Also, there is a mailing list for discussion about
-.BR wvtftpd
-and other WvStreams projects.
-If you are having problems, or have anything else to say, send email to
-.BR <wvstreams-dev@lists.nit.ca> .
+Probably very few, but if you find any, please report them to us.  There is a
+mailing list for discussion about
+.BR wvtftpd 
+and other 
+.BR WvStreams
+projects. If you are having problems, or have anything else to say, send email
+with the body "SUBSCRIBE" to
+.BR <wvstreams-dev-request@lists.nit.ca> .
 .PP
 .SH FILES
 .TP
 .IR /etc/wvtftpd.conf
 Configuration file which contains account, passwords and delivery
-information. See wvtftpd.conf(5).
+information.  A sample file is included with the source.
 .PP
 .SH AUTHORS
 Mark Cote for Net Integration Technologies Inc., as
 part of the NetIntegrator project.
-.PP
-.SH SEE ALSO
-.BR wvtftpd.conf (5),
 .PP
 .SH FAQ
 .TP
