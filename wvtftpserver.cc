@@ -313,9 +313,9 @@ void WvTFTPServer::new_connection()
         newconn->oacklen = 2;
         char * oackp = &(newconn->oack[2]);
         char * optname;
-        char * optvalue = -1;  // Give optvalue a dummy value so gcc doesn't 
-                               // complain about potential lack of
-                               // initialization.
+        char * optvalue = NULL; // Give optvalue a dummy value so gcc doesn't 
+                                // complain about potential lack of
+                                // initialization.
         while (ch < packetsize-1)
         {
             optname = &packet[ch];
