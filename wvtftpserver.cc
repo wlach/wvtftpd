@@ -26,7 +26,14 @@ void WvTFTPServer::execute()
         if (difftime(time(0), i().stamp) >= i().timeout)
         {
             log("Timeout on connection from %s.\n", i().client);
-            if (i().send_oack)
+            if (++i().numtimeouts == max_timeouts)
+            {
+                log("Max timeouts reached; aborting transfer.\n");
+                send_err(0, "Too many timeouts.");
+                fclose(i().tftpfile);
+                conns.remove(&i());
+            }
+            else if (i().send_oack)
             {
                 log(WvLog::Debug5, "Sending oack ");
                 memcpy(packet, i().oack, 512);
@@ -131,6 +138,7 @@ void WvTFTPServer::new_connection()
     newconn->pktclump = 3;
     newconn->unack = 0;
     newconn->donefile = false;
+    newconn->numtimeouts = 0;
     if (newconn->direction == tftpread)
     {
         if (newconn->mode == netascii)

@@ -50,9 +50,11 @@ public:
         time_t stamp;               // time that we last sent a packet
         char * oack;                // Holds the OACK packet in case we need
         size_t oacklen;             //     to resend it.
+        int numtimeouts;
     };
 
     DeclareWvDict(TFTPConn, WvIPPortAddr, client);
+    void set_max_timeouts(int _max_timeout);
 
 protected:
     TFTPConnDict conns;
@@ -61,6 +63,7 @@ protected:
     char packet[MAX_PACKET_SIZE];
     size_t packetsize;
     int def_timeout;
+    int max_timeouts;
 
     virtual void new_connection() = 0;
     virtual void handle_packet();

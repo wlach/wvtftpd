@@ -7,12 +7,17 @@
 
 WvTFTPBase::WvTFTPBase(int _tftp_tick, int _def_timeout, int port = 0)
     : WvUDPStream(port, WvIPPortAddr()), conns(5), log("WvTFTP", WvLog::Debug4),
-      tftp_tick(_tftp_tick*1000), def_timeout(_def_timeout)
+      tftp_tick(_tftp_tick*1000), def_timeout(_def_timeout), max_timeouts(3)
 {
 }
 
 WvTFTPBase::~WvTFTPBase()
 {
+}
+
+void WvTFTPBase::set_max_timeouts(int _max_timeouts)
+{
+    max_timeouts = _max_timeouts;
 }
 
 void WvTFTPBase::dump_pkt()
