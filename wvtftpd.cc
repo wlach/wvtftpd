@@ -6,6 +6,7 @@
  */
 #include "wvtftpserver.h"
 #include "wvlogrcv.h"
+#include "wvver.h"
 #include <signal.h>
 
 static bool want_to_die = false;
@@ -45,7 +46,7 @@ int main(int argc, char **argv)
                 lvl = WvLog::Debug5;
             break;
         case 'V':
-            fprintf(stderr, "WvTFTPd version 1.0\n");
+            fprintf(stderr, "WvTFTPd version %s\n",WVTFTP_VER_STRING);
             exit(2);
         case '?':
             usage(argv[0]);
