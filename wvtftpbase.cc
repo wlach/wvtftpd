@@ -55,20 +55,20 @@ void WvTFTPBase::handle_packet()
 
         unsigned int blocknum = static_cast<unsigned char>(packet[2]) * 256 +
             static_cast<unsigned char>(packet[3]);
-        log("Blocknum is %s; unack is %s; lastsent is %s.\n", blocknum,
+        log(WvLog::Debug5, "Blocknum is %s; unack is %s; lastsent is %s.\n", blocknum,
             c->unack, c->lastsent);
         if (blocknum == 0 && c->send_oack)
         {
             c->send_oack = false;
             delete c->oack;
-            log("last sent: %s unack: %s pktclump: %s\n",c->lastsent, c->unack,
+            log(WvLog::Debug5, "last sent: %s unack: %s pktclump: %s\n",c->lastsent, c->unack,
                 c->pktclump);
             int pktsremain = static_cast<int>(c->lastsent) -
                 static_cast<int>(c->unack);
             while (pktsremain < static_cast<int>(c->pktclump) - 1)
             {
-                log("result is %s\n", pktsremain);
-                log("send\n");
+                log(WvLog::Debug5, "result is %s\n", pktsremain);
+                log(WvLog::Debug5, "send\n");
                 send_data(c);
                 if (c->donefile)
                     break;

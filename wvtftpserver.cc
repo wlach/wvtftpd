@@ -32,7 +32,7 @@ void WvTFTPServer::execute()
             log("Timeout on connection from %s.\n", i().remote);
             if (++i().numtimeouts == max_timeouts)
             {
-                log("Max timeouts reached; aborting transfer.\n");
+                log(WvLog::Debug,"Max timeouts reached; aborting transfer.\n");
                 send_err(0, "Too many timeouts.");
                 fclose(i().tftpfile);
                 conns.remove(&i());
@@ -192,18 +192,18 @@ void WvTFTPServer::new_connection()
         if (strip_prefix[strip_prefix.len() -1] != '/')
             strip_prefix.append("/");
 
-        log("strip prefix is %s.\n", strip_prefix);
+        log(WvLog::Debug5, "strip prefix is %s.\n", strip_prefix);
         if (!strncmp(newconn->filename, strip_prefix, strip_prefix.len()))
         {
-            log("Stripping prefix.\n");
+            log(WvLog::Debug5, "Stripping prefix.\n");
             newconn->filename = WvString(&newconn->filename[strip_prefix.len()]);
         }
     }
-    log("Filename after stripping is %s.\n", newconn->filename);
+    log(WvLog::Debug5, "Filename after stripping is %s.\n", newconn->filename);
     WvString alias = cfg.get("TFTP Aliases", WvString("%s %s", clientportless,
             newconn->filename), cfg.get("TFTP Aliases", newconn->filename,
             ""));
-    log("Alias is %s.\n", alias);
+    log(WvLog::Debug5, "Alias is %s.\n", alias);
     if (alias != "")
         newconn->filename = alias;
 
@@ -222,12 +222,12 @@ void WvTFTPServer::new_connection()
         if (alias == "")
         {
             // Check for aliases again
-            log("Filename before 2nd alias check is %s.\n", newconn->filename);
+            log(WvLog::Debug5, "Filename before 2nd alias check is %s.\n", newconn->filename);
             WvString newname = cfg.get("TFTP Aliases", WvString("%s %s",
                 clientportless, newconn->filename), cfg.get("TFTP Aliases",
                 newconn->filename, newconn->filename));
             newconn->filename = newname;
-            log("Filename after adding basedir and checking for alias is %s.\n",
+            log(WvLog::Debug5, "Filename after adding basedir and checking for alias is %s.\n",
                 newconn->filename);
         }
         newconn->filename.unique();
@@ -479,13 +479,13 @@ void WvTFTPServer::new_connection()
         }
         else
         {
-            log("last sent: %s unack: %s pktclump: %s\n", newconn->lastsent,
+            log(WvLog::Debug5, "last sent: %s unack: %s pktclump: %s\n", newconn->lastsent,
                 newconn->unack, newconn->pktclump);
             int pktsremain = static_cast<int>(newconn->lastsent) -
                 static_cast<int>(newconn->unack);
             while (pktsremain < static_cast<int>(newconn->pktclump) - 1)
             {
-                log("result is %s\n", pktsremain);
+                log(WvLog::Debug5, "result is %s\n", pktsremain);
                 send_data(newconn);
                 if (newconn->donefile)
                     break;
