@@ -10,10 +10,12 @@
 WvTFTPServer::WvTFTPServer(WvConf &_cfg, int _tftp_tick, int def_timeout)
     : WvTFTPBase(_tftp_tick, def_timeout, 69), cfg(_cfg)
 {
+    log(WvLog::Info, "WvTFTP listening on %s.\n", *local());
 }
 
 WvTFTPServer::~WvTFTPServer()
 {
+    log(WvLog::Info, "WvTFTP shutting down.\n");
 }
 
 void WvTFTPServer::execute()
@@ -97,14 +99,16 @@ int WvTFTPServer::validate_access(TFTPConn *c, WvString &basedir)
 
 void WvTFTPServer::new_connection()
 {
-    log(WvLog::Debug4, "New connection from %s\n", remaddr);
-    TFTPOpcode pktcode = static_cast<TFTPOpcode>(packet[0] * 256 + packet[1]);
-    log(WvLog::Debug4, "Packet opcode is %s.\n", pktcode);
-    if (pktcode > WRQ)
+    log(WvLog::Debug, "New connection from %s\n", remaddr);
+    int code = packet[0]*256 + packet[1];
+    log(WvLog::Debug4, "Packet opcode is %s.\n", code);
+    if ((!code) || (code > 2))
     {
-        log(WvLog::Debug4, "Erroneous packet; discarding.\n");
+        log(WvLog::Debug, "Erroneous packet; aborting.\n");
+        send_err(4);
         return;
     }
+    TFTPOpcode pktcode = static_cast<TFTPOpcode>(code);
     
     TFTPConn *newconn = new TFTPConn;
     newconn->remote = remaddr;
@@ -139,7 +143,7 @@ void WvTFTPServer::new_connection()
     }
     if (!foundnull1 || !foundnull2)
     {
-        log(WvLog::Debug4, "Badly formed packet; discarding.\n");
+        log(WvLog::Debug, "Badly formed packet; aborting.\n");
         send_err(4);
         delete newconn;
         return;
@@ -162,7 +166,7 @@ void WvTFTPServer::new_connection()
         newconn->mode = mail;
     else
     { 
-        log(WvLog::Debug4, "Unknown mode string \"%s\"; discarding.\n",
+        log(WvLog::Debug, "Unknown mode string \"%s\"; aborting.\n",
             &packet[modestart]);
         send_err(4);
         delete newconn;
@@ -228,8 +232,11 @@ void WvTFTPServer::new_connection()
         }
         newconn->filename.unique();
     }
-   
-    log("Final filename is %s.\n", newconn->filename);
+  
+    if (newconn->direction == tftpread)
+        log(WvLog::Debug, "Client is requesting to read %s.\n", newconn->filename);
+    else
+        log(WvLog::Debug, "Client is requesting to write%s.\n", newconn->filename);
 
     int tftpaccess = validate_access(newconn, basedir);
     if (tftpaccess)
@@ -240,7 +247,7 @@ void WvTFTPServer::new_connection()
             newconn->filename = cfg.get("TFTP", "Default File", "");
             if (newconn->filename == "")
             {
-                log(WvLog::Debug4, "File not found.  Aborting.\n");
+                log(WvLog::Debug, "File not found.  Aborting.\n");
                 send_err(1);
                 delete newconn;
                 return; 
@@ -248,7 +255,7 @@ void WvTFTPServer::new_connection()
         }
         else
         {
-            log(WvLog::Debug4, "File access failed (error %s).\n", tftpaccess);
+            log(WvLog::Debug, "File access failed (error %s).\n", tftpaccess);
             send_err(tftpaccess);
             delete newconn;
             return;
@@ -265,7 +272,7 @@ void WvTFTPServer::new_connection()
 
         if (!newconn->tftpfile)
         {
-            log(WvLog::Debug4, "Failed to open file for reading; aborting.\n");
+            log(WvLog::Debug, "Failed to open file for reading; aborting.\n");
             send_err(2);
             delete newconn;
             return;
@@ -280,7 +287,7 @@ void WvTFTPServer::new_connection()
 
         if (newconn->tftpfile)
         {
-            log(WvLog::Debug4, "File already exists; aborting.\n");
+            log(WvLog::Debug, "File already exists; aborting.\n");
             send_err(6);
             fclose(newconn->tftpfile);
             delete newconn;
@@ -294,7 +301,7 @@ void WvTFTPServer::new_connection()
 
         if (!newconn->tftpfile)
         {
-            log(WvLog::Debug4, "Failed to open file for writing; aborting.\n");
+            log(WvLog::Debug, "Failed to open file for writing; aborting.\n");
             send_err(3);
             delete newconn;
             return;
@@ -326,7 +333,7 @@ void WvTFTPServer::new_connection()
                 {
                     if (ch == packetsize)
                     {    
-                        log(WvLog::Debug4,
+                        log(WvLog::Debug,
                             "Badly formed option %s.  Aborting.\n",
                             (i==0) ? "name" : "value");
                         send_err(8);
@@ -339,9 +346,8 @@ void WvTFTPServer::new_connection()
                     optvalue = &packet[ch+1];
             }
             ch++;
-            wvcon->print("Option %s, value %s.\n", optname, optvalue);
+            log(WvLog::Debug4, "Option %s, value %s.\n", optname, optvalue);
             strlwr(optname);
-            wvcon->print("Option is now %s.\n", optname);
 
             if (!strcmp(optname, "blksize"))
             {
@@ -351,7 +357,7 @@ void WvTFTPServer::new_connection()
                     WvString message = WvString(
                         "Request for blksize of %s is invalid.  Aborting.",
                         newconn->blksize);
-                    log(WvLog::Debug4, "%s\n", message);
+                    log(WvLog::Debug, "%s\n", message);
                     send_err(8, message);
                     fclose(newconn->tftpfile);
                     delete newconn;
@@ -399,7 +405,7 @@ void WvTFTPServer::new_connection()
                     WvString message = WvString(
                         "Request for tsize of %s is invalid.  Aborting.",
                         newconn->tsize);
-                    log(WvLog::Debug4, "%s\n", message);
+                    log(WvLog::Debug, "%s\n", message);
                     send_err(8, message);
                     fclose(newconn->tftpfile);
                     delete newconn;
@@ -414,7 +420,7 @@ void WvTFTPServer::new_connection()
                         {
                             WvString message = 
                                 "Cannot get stats for file.  Aborting.";
-                           log(WvLog::Debug4, "%s\n", message);
+                           log(WvLog::Debug, "%s\n", message);
                            send_err(8, message);
                            fclose(newconn->tftpfile);
                            delete newconn;
@@ -447,7 +453,7 @@ void WvTFTPServer::new_connection()
            newconn->mode = mail;
         else
         { 
-            log(WvLog::Debug4, "Unknown mode string \"%s\"; discarding.\n",
+            log(WvLog::Debug, "Unknown mode string \"%s\"; aborting.\n",
                 &packet[modestart]);
             send_err(4);
             fclose(newconn->tftpfile);

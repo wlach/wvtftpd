@@ -23,16 +23,12 @@ int main()
     signal(SIGINT, sighandler_die);
     WvConf cfg("/etc/wvtftpd.conf");
     WvTFTPServer tftps(cfg, 30, 30);
-    WvLogConsole logdisp(2, WvLog::Debug4);
+    WvLogConsole logdisp(2, WvLog::Debug);
 
     while (tftps.isok() && !want_to_die)
     {
 	if (tftps.select(1000))
 	    tftps.callback();
     }
-    if (!tftps.isok())
-        wvcon->print("WvTFTPServer is not okay; aborting.\n");
-    if (want_to_die)
-        wvcon->print("Shutting down.\n");
     cfg.save();
 }
