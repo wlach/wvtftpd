@@ -38,11 +38,12 @@ void WvTFTPServer::execute()
 	
         struct timeval tv = wvtime();
         
-	int lastidx = (i->unack - i->lpt_idx) % 65536;
+	int lastidx = i->unack - i->lpt_idx;
         if (msecdiff(tv, i->last_pkt_time[lastidx]) >= timeout)
         {
-            log(WvLog::Debug1, "Timeout (%s ms) on connection from %s.\n", 
-		timeout, i->remote);
+            log(WvLog::Debug1,
+                "Timeout (%s ms) on block %s from connection to %s.\n", 
+		timeout, i->unack, i->remote);
 	    log(WvLog::Debug2, "[t1 %s, t2 %s, elapsed %s, unack %s, idx %s]\n",
 		tv.tv_sec, i->last_pkt_time[lastidx].tv_sec,
 		msecdiff(tv, i->last_pkt_time[lastidx]),

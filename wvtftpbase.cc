@@ -35,15 +35,8 @@ void PktTime::set(int pktnum, struct timeval &tv)
         else if (d >= pktclump)
             memset(times, 0, pktclump * sizeof(struct timeval));
     }
-    struct timezone tz;
-    int res = gettimeofday(&times[pktnum - idx], &tz);
-    if (res != 0)
-    {
-        WvLog log("PktTime", WvLog::Error);
-        log("gettimeofday() failed!\n");
-        times[pktnum - idx].tv_sec = 0;
-        times[pktnum - idx].tv_usec = 0;
-    } 
+    times[pktnum - idx].tv_sec = tv.tv_sec;
+    times[pktnum - idx].tv_usec = tv.tv_usec;
 }
 
 struct timeval *PktTime::get(int pktnum)
@@ -94,11 +87,16 @@ void WvTFTPBase::handle_packet()
             return;
         }
 
-        int blocknum = (unsigned char)(packet[2]) * 256 +
-	    	       (unsigned char)(packet[3]);
+        int small_blocknum = (unsigned char)(packet[2]) * 256 +
+	    	             (unsigned char)(packet[3]);
+        int mult = c->unack / 65536;
+        int blocknum = mult * 65536 + small_blocknum;
+        if (blocknum > c->unack + 32000)
+            blocknum = (mult - 1) * 65536 + small_blocknum;
         log(WvLog::Debug5,
-	    "handle: got blocknum %s; unack is %s; lastsent is %s.\n",
-            blocknum, c->unack, c->lastsent);
+	    "handle: got small_blocknum %s; unack is %s; lastsent is %s; "
+            "blocknum is %s.\n",
+            small_blocknum, c->unack, c->lastsent, blocknum);
 	
         if (blocknum == 0 && c->send_oack)
         {
@@ -120,7 +118,7 @@ void WvTFTPBase::handle_packet()
 	    
 	    c->numtimeouts = 0;
         }
-        else if (blocknum != ((c->unack - 1) % 65536)) // ignore duplicate ACK
+        else if (blocknum != (c->unack - 1)) // ignore duplicate ACK
         {
             // Add rtt to cumulative sum.
             if (blocknum == c->unack && blocknum > c->timed_out_ignore)
@@ -128,7 +126,7 @@ void WvTFTPBase::handle_packet()
 		struct timeval tv = wvtime();
 		
 		time_t rtt = msecdiff(tv,
-		      c->last_pkt_time[(blocknum - c->lpt_idx) % 65536]);
+		      c->last_pkt_time[blocknum - c->lpt_idx]);
 		log("rtt is %s.\n", rtt);
 		
 		c->rtt += rtt;
@@ -150,9 +148,9 @@ void WvTFTPBase::handle_packet()
 	    {
 		// send the next packet if the first unacked packet is the
 		// one being acked.
-		c->unack = (blocknum + 1) % 65536;
+		c->unack = blocknum + 1;
 		
-		while (((c->lastsent - c->unack) % 65536) < c->pktclump - 1)
+		while ((c->lastsent - c->unack) < c->pktclump - 1)
 		{
 		    if (c->donefile)
 			break;
@@ -175,7 +173,12 @@ void WvTFTPBase::handle_packet()
             return;
         }
 
-        int blocknum = packet[2] * 256 + packet[3];
+        int small_blocknum = (unsigned char)(packet[2]) * 256 +
+	    	             (unsigned char)(packet[3]);
+        int mult = c->lastsent / 65536;
+        int blocknum = mult * 65536 + small_blocknum;
+        if (blocknum < c->lastsent - 32000)
+            blocknum = (mult + 1) * 65536 + small_blocknum;
 
         if (blocknum == c->lastsent)
             send_ack(c, true);
@@ -208,7 +211,6 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
     else
     {
         c->lastsent++;
-	c->lastsent %= 65536;
         firstpkt = c->lastsent;
         lastpkt = c->lastsent;
     }
@@ -225,8 +227,8 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
         packet[0] = 0;
         packet[1] = 3;
         // block num
-        packet[2] = pktcount / 256;
-        packet[3] = pktcount % 256;
+        packet[2] = (pktcount % 65536) / 256;
+        packet[3] = (pktcount % 65536) % 256;
         // data
         datalen = fread(&packet[4], sizeof(char), c->blksize, c->tftpfile);
         log(WvLog::Debug5, "send_data: read %s bytes from file.\n", datalen);
@@ -265,7 +267,7 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
             }
         }
 	
-        c->last_pkt_time[(pktcount - c->lpt_idx) % 65536] = tv;
+        c->last_pkt_time[pktcount - c->lpt_idx] = tv;
     }
 }
 
@@ -273,16 +275,13 @@ void WvTFTPBase::send_data(TFTPConn *c, bool resend = false)
 void WvTFTPBase::send_ack(TFTPConn *c, bool resend = false)
 {
     if (!resend)
-    {
-        if (++c->lastsent == 65536)
-            c->lastsent = 0;
-    }
+        c->lastsent++;
 
     packetsize = 4;
     packet[0] = 0;
     packet[1] = 4;
-    packet[2] = c->lastsent / 256;
-    packet[3] = c->lastsent % 256;
+    packet[2] = (c->lastsent % 65536) / 256;
+    packet[3] = (c->lastsent % 65536) % 256;
 //    log(WvLog::Debug5, "Sending ");
     dump_pkt();
     write(packet, packetsize); 
