@@ -21,8 +21,6 @@ PktTime::~PktTime()
 
 void PktTime::set(int pktnum, struct timeval &tv)
 {
-    WvLog log("PktTime", WvLog::Info);
-    log("pktnum %s idx %s\n", pktnum, idx);
     assert(pktnum >= idx);
     if ((pktnum - idx) >= pktclump)
     {

@@ -42,9 +42,10 @@ void WvTFTPServer::execute()
         
         if (msecdiff(tv, *(i->pkttimes->get(expect_packet))) >= timeout)
         {
+            i->numtimeouts++;
             log(WvLog::Debug1,
-                "Timeout (%s ms) on block %s from connection to %s.\n", 
-		timeout, expect_packet, i->remote);
+                "Timeout #%s (%s ms) on block %s from connection to %s.\n", 
+		i->numtimeouts, timeout, expect_packet, i->remote);
 	    log(WvLog::Debug2, "[t1 %s, t2 %s, elapsed %s, expected %s]\n",
 		tv.tv_sec, i->pkttimes->get(expect_packet)->tv_sec,
 		msecdiff(tv, *(i->pkttimes->get(expect_packet))),
@@ -54,13 +55,14 @@ void WvTFTPServer::execute()
                 i->total_packets, 
                 i->total_packets ? i->rtt / i->total_packets : 1000, timeout,
 		msecdiff(tv, *(i->pkttimes->get(expect_packet))));
-            if ((i->mult + 1) * (i->mult + 1) * i->rtt / i->total_packets < (time_t)cfg.getint("TFTP", "Max Timeout", 5000))
+            if ((i->mult + 1) * (i->mult + 1) * i->rtt / i->total_packets <
+		(time_t)cfg.getint("TFTP", "Max Timeout", 5000))
                 i->mult++;
             else
                 log("Max timeout reached.\n");
             log("Increasing multiplier to %s.\n", i->mult * i->mult);
 
-            if (++i->numtimeouts == max_timeouts)
+            if (i->numtimeouts == max_timeouts)
             {
                 log(WvLog::Debug,"Max timeouts reached; aborting transfer.\n");
                 send_err(0, "Too many timeouts.");
