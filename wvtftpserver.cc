@@ -289,9 +289,23 @@ void WvTFTPServer::new_connection()
         }
     }
     log(WvLog::Debug5, "Filename after stripping is %s.\n", c->filename);
-    WvString alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
-            c->filename)].get(cfg["TFTP Aliases"][c->filename].get(""));
-    log(WvLog::Debug5, "Alias is %s.\n", alias);
+
+    WvString alias = cfg["TFTP Alias Once"][WvString("%s %s", clientportless,
+						     c->filename)].get();
+
+    if (alias)
+    {
+	c->alias_once = true;
+	c->alias = cfg["TFTP Alias Once"][WvString("%s %s", clientportless,
+						   c->filename)];
+	log(WvLog::Debug5, "Alias once is \"%s\".\n", alias);
+    }
+    else
+    {
+	alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
+					     c->filename)].get(cfg["TFTP Aliases"][c->filename].get(""));
+	log(WvLog::Debug5, "Alias is \"%s\".\n", alias);
+    }
     if (alias != "")
         c->filename = alias;
 

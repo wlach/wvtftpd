@@ -14,6 +14,7 @@
 #include "wvlog.h"
 #include "wvtimestream.h"
 #include "wvstringlist.h"
+#include "uniconf.h"
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
@@ -76,11 +77,26 @@ public:
 	                            //     has been retransmitted due to
 				    //     timeout, and should thus be ignored
 				    //     in rtt calculations.
+	bool alias_once;
+	UniConf alias;
 	
-	TFTPConn()
-	    { tftpfile = NULL; }
+	TFTPConn():
+	    tftpfile(NULL),
+	    pkttimes(NULL),
+	    alias_once(false)
+	{
+	}
 	~TFTPConn()
-	    { if (tftpfile) fclose(tftpfile); if (pkttimes) delete pkttimes; }
+	{
+	    if (tftpfile)
+		fclose(tftpfile);
+
+	    if (pkttimes)
+		delete pkttimes;
+
+	    if (alias_once)
+		alias.set(WvString());
+	}
     };
 
     DeclareWvDict(TFTPConn, WvIPPortAddr, remote);
