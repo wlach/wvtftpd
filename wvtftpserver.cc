@@ -62,7 +62,7 @@ void WvTFTPServer::execute()
                 log("Max timeout reached.\n");
             log("Increasing multiplier to %s.\n", i->mult * i->mult);
 
-            if (i->numtimeouts == cfg["TFTP"]["Max Timeout Count"].getint(10))
+            if (i->numtimeouts == cfg["TFTP/Max Timeout Count"].getint(1000))
             {
                 log(WvLog::Debug,"Max timeouts reached; aborting transfer.\n");
                 send_err(0, "Too many timeouts.");
