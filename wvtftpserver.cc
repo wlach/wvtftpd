@@ -118,10 +118,10 @@ void WvTFTPServer::new_connection()
     newconn->client = remaddr;
     WvIPAddr clientportless = static_cast<WvIPAddr>(newconn->client);
 
-    if (!cfg.getint("Registered Clients", clientportless,
-             cfg.getint("New Clients", clientportless, false)))
+    if (!cfg.getint("Registered TFTP Clients", clientportless,
+             cfg.getint("New TFTP Clients", clientportless, false)))
     {
-        cfg.setint("New Clients", clientportless, true);
+        cfg.setint("New TFTP Clients", clientportless, true);
         cfg.flush();
     }
 
