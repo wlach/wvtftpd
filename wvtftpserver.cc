@@ -48,6 +48,10 @@ void WvTFTPServer::execute()
                 send_data(&i(), true);
             else
                 send_ack(&i(), true);
+	    
+	    // list might have lost an entry, screwing up the iterator;
+	    // rewind now.
+	    i.rewind();
         }
     }
 
