@@ -54,8 +54,10 @@ void WvTFTPServer::execute()
                 i->total_packets, 
                 i->total_packets ? i->rtt / i->total_packets : 1000, timeout,
 		msecdiff(tv, *(i->pkttimes->get(expect_packet))));
-            if (i->mult < cfg.getint("TFTP", "Max Mult", 20))
+            if ((i->mult + 1) * (i->mult + 1) * i->rtt / i->total_packets < (time_t)cfg.getint("TFTP", "Max Timeout", 5000))
                 i->mult++;
+            else
+                log("Max timeout reached.\n");
             log("Increasing multiplier to %s.\n", i->mult * i->mult);
 
             if (++i->numtimeouts == max_timeouts)
