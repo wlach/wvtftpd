@@ -92,7 +92,6 @@ protected:
     char packet[MAX_PACKET_SIZE];
     size_t packetsize;
     int def_timeout;
-    int max_timeouts;
 
     virtual void new_connection() = 0;
     virtual void handle_packet();

@@ -48,7 +48,7 @@ struct timeval *PktTime::get(int pktnum)
 
 WvTFTPBase::WvTFTPBase(int _tftp_tick, int port = 0)
     : WvUDPStream(port, WvIPPortAddr()), conns(5), log("WvTFTP", WvLog::Debug4),
-      tftp_tick(_tftp_tick), max_timeouts(25)
+      tftp_tick(_tftp_tick)
 {
 }
 
