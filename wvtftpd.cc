@@ -2,7 +2,7 @@
 
 int main()
 {
-    WvTFTPs tftps("/tftpboot", 30*1000);
+    WvTFTPs tftps("/tftpboot", 30, 30);
 
     while (tftps.isok())
     {
