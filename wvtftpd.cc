@@ -8,6 +8,7 @@
 #include "wvlogrcv.h"
 #include "wvver.h"
 #include <signal.h>
+#include <errno.h>
 
 static bool want_to_die = false;
 
@@ -53,6 +54,7 @@ int main(int argc, char **argv)
         }
     }
 
+    WvLog log("WvTFTP", WvLog::Critical);
     WvConf cfg("/etc/wvtftpd.conf");
     WvTFTPServer tftps(cfg, 100);
     WvLogConsole logdisp(2, lvl);
@@ -64,5 +66,7 @@ int main(int argc, char **argv)
 	else
 	    cfg.flush();
     }
+    if (!tftps.isok() && tftps.geterr())
+        log("%s.\n", strerror(tftps.geterr()));
     cfg.save();
 }
