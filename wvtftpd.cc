@@ -8,7 +8,9 @@
 
 int main()
 {
-    WvTFTPServer tftps("/tftpboot", 30, 30);
+    WvStringList *tftpdirs = new WvStringList;
+    tftpdirs->append(new WvString("/tftpboot"),true);
+    WvTFTPServer tftps(tftpdirs, 30, 30);
 
     while (tftps.isok())
     {

@@ -15,6 +15,7 @@
 #include "wvudp.h"
 #include "wvlog.h"
 #include "wvtimestream.h"
+#include "wvstringlist.h"
 
 const int MAX_PACKET_SIZE = 65535;
 const bool WVTFTP_DEBUG = false;

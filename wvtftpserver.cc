@@ -7,9 +7,12 @@
 #include "strutils.h"
 #include <sys/stat.h>
 
-WvTFTPServer::WvTFTPServer(WvString _basedir, int _tftp_tick, int def_timeout)
-    : WvTFTPBase(_tftp_tick, def_timeout, 69), basedir(_basedir)
+WvTFTPServer::WvTFTPServer(WvStringList* _basedirs, int _tftp_tick,
+    int def_timeout)
+    : WvTFTPBase(_tftp_tick, def_timeout, 69), basedirs(_basedirs)
 {
+    if (basedirs->count() == 0)
+        basedirs->append(new WvString("/tftpboot"), true);
 }
 
 WvTFTPServer::~WvTFTPServer()
@@ -62,6 +65,56 @@ void WvTFTPServer::execute()
     }
 }
 
+// Returns 0 if successful or the error number (1-8) if not.
+int WvTFTPServer::validate_access(TFTPConn *c)
+{
+    WvStringList::Iter i(*basedirs);
+    if (c->filename[0] != '/')
+    {
+        i.rewind();
+        i.next();
+        c->filename = WvString("%s/%s", i(), c->filename);
+    }
+    else
+    {
+        bool violated = true;
+        for (i.rewind(); i.next(); )
+        {
+            if (!strncmp(c->filename, i(), i().len()))
+            {
+                violated = false;
+                break;
+            }
+        }
+        if (violated)
+            return 2;
+    }
+
+    // As the original tftpd says, "prevent tricksters from getting
+    // around the directory restrictions".
+    if (!strncmp(c->filename, "../", 3))
+        return 2;
+
+    const char *cp;
+    struct stat stbuf;
+    for (cp = c->filename + 1; *cp; cp++)
+        if(*cp == '.' && strncmp(cp-1, "/../", 4) == 0)
+            return 2;
+    if (stat(c->filename, &stbuf) < 0)
+        return (errno == ENOENT ? 1 : 2);
+    if (c->direction == tftpread)
+    {
+        if ((stbuf.st_mode&(S_IREAD >> 6)) == 0)
+            return 2;
+    }
+    else
+    {
+        if ((stbuf.st_mode&(S_IWRITE >> 6)) == 0)
+            return 2;
+    }
+    return 0; 
+}
+
 void WvTFTPServer::new_connection()
 {
     log(WvLog::Debug4, WvString("New connection from %s\n", remaddr));
@@ -105,9 +158,7 @@ void WvTFTPServer::new_connection()
     }
 
     newconn->filename = &packet[2];
-    if (newconn->filename[0] != '/')
-        newconn->filename = WvString("%s/%s", basedir, newconn->filename);
-    log(WvLog::Debug4, WvString("Filename is %s.\n", newconn->filename));
+
     newconn->direction = static_cast<TFTPDir>(static_cast<int>(pktcode)-1);
     log(WvLog::Debug4, WvString("Direction is %s.\n", newconn->direction));
 
@@ -139,6 +190,18 @@ void WvTFTPServer::new_connection()
     newconn->unack = 0;
     newconn->donefile = false;
     newconn->numtimeouts = 0;
+
+    int tftpaccess = validate_access(newconn);
+    if (tftpaccess)
+    {
+        log(WvLog::Debug4,
+            WvString("File access failed (error %s).\n", tftpaccess));
+        send_err(tftpaccess);
+        delete newconn;
+        return;
+    }
+    log(WvLog::Debug4, WvString("Filename is %s.\n", newconn->filename));
+
     if (newconn->direction == tftpread)
     {
         if (newconn->mode == netascii)
@@ -362,7 +425,6 @@ void WvTFTPServer::new_connection()
             while (pktsremain < static_cast<int>(newconn->pktclump) - 1)
             {
                 log("result is %s\n", pktsremain);
-                log("send\n");
                 send_data(newconn);
                 if (newconn->donefile)
                     break;
