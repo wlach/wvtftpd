@@ -93,9 +93,6 @@ public:
 
 	    if (pkttimes)
 		delete pkttimes;
-
-	    if (alias_once)
-		alias.set(WvString());
 	}
     };
 

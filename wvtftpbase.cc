@@ -141,6 +141,10 @@ void WvTFTPBase::handle_packet()
                 log(WvLog::Debug, "File transferred successfully.\n");
                 log(WvLog::Debug, "Average rtt was %s ms.\n", c->rtt /
 		    blocknum);
+
+		if (c->alias_once)
+		    c->alias.set(WvString());
+
 		conns.remove(c);
 		c = NULL;
 	    }
