@@ -552,6 +552,9 @@ void WvTFTPServer::new_connection()
             packetsize = c->oacklen;
             dump_pkt();
             write(packet, packetsize);
+	    // Set pkttimes[1] to avoid timeouts on ACK for options.
+	    struct timeval tv = wvtime();
+	    c->pkttimes->set(1, tv);
         }
         else
         {
