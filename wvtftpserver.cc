@@ -44,7 +44,7 @@ void WvTFTPServer::execute()
         {
             i->numtimeouts++;
             log(WvLog::Debug1,
-                "Timeout #%s (%s ms) on block %s from connection to %s.\n", 
+                "Timeout #%s (%s ms) on block %s from connection to %s.\n",
 		i->numtimeouts, timeout, expect_packet, i->remote);
 	    log(WvLog::Debug2, "[t1 %s, t2 %s, elapsed %s, expected %s]\n",
 		tv.tv_sec, i->pkttimes->get(expect_packet)->tv_sec,
