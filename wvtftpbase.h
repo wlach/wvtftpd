@@ -35,7 +35,7 @@ public:
 
     struct TFTPConn
     {
-        WvIPPortAddr client;        // client's address and port
+        WvIPPortAddr remote;        // remote's address and port
         WvString filename;          // filename of this connection
         TFTPDir direction;          // reading or writing?
         TFTPMode mode;              // mode (netascii or octet)
@@ -54,7 +54,7 @@ public:
         int numtimeouts;
     };
 
-    DeclareWvDict(TFTPConn, WvIPPortAddr, client);
+    DeclareWvDict(TFTPConn, WvIPPortAddr, remote);
     void set_max_timeouts(int _max_timeout);
 
 protected:

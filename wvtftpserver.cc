@@ -25,7 +25,7 @@ void WvTFTPServer::execute()
         connscount++;
         if (difftime(time(0), i().stamp) >= i().timeout)
         {
-            log("Timeout on connection from %s.\n", i().client);
+            log("Timeout on connection from %s.\n", i().remote);
             if (++i().numtimeouts == max_timeouts)
             {
                 log("Max timeouts reached; aborting transfer.\n");
@@ -115,8 +115,8 @@ void WvTFTPServer::new_connection()
     }
     
     TFTPConn *newconn = new TFTPConn;
-    newconn->client = remaddr;
-    WvIPAddr clientportless = static_cast<WvIPAddr>(newconn->client);
+    newconn->remote = remaddr;
+    WvIPAddr clientportless = static_cast<WvIPAddr>(newconn->remote);
 
     if (!cfg.getint("Registered TFTP Clients", clientportless,
              cfg.getint("New TFTP Clients", clientportless, false)))
@@ -188,7 +188,7 @@ void WvTFTPServer::new_connection()
     newconn->numtimeouts = 0;
 
     newconn->filename = cfg.get("TFTP Aliases", WvString("%s %s",
-         static_cast<WvIPAddr>(newconn->client), newconn->filename),
+         clientportless, newconn->filename),
          cfg.get("TFTP Aliases", newconn->filename, newconn->filename));
 
     int tftpaccess = validate_access(newconn);
@@ -197,7 +197,7 @@ void WvTFTPServer::new_connection()
         if (tftpaccess == 1)
         {
             // File not found.  Check for default file.
-            newconn->filename = cfg.get("TFTP", "DefaultFile", "");
+            newconn->filename = cfg.get("TFTP", "Default File", "");
             if (newconn->filename == "")
             {
                 log(WvLog::Debug4, WvString("File not found.  Aborting.\n"));
