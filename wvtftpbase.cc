@@ -88,18 +88,15 @@ void WvTFTPBase::handle_packet()
             else
             {
                 c->stamp = time(0);
-                c->unack = blocknum+1;
-                if (c->unack == 65536)
-                {
-                    c->unack = 0;
-                }
-                // take into account rollover possibility
-                while (c->lastsent - c->unack < c->pktclump - 1)
+                while (((c->lastsent - c->unack) % 65536) < c->pktclump)
                 {
                     if (c->donefile)
                         break;
                     send_data(c);
                 }
+                c->unack = blocknum + 1;
+                if (c->unack == 65536)
+                    c->unack = 0;
             }
         }
     }
