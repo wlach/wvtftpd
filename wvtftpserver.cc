@@ -133,7 +133,6 @@ void WvTFTPServer::new_connection()
              cfg.getint("New TFTP Clients", clientportless, false)))
     {
         cfg.setint("New TFTP Clients", clientportless, true);
-        cfg.flush();
     }
 
     // Make sure the filename and mode actually end with nulls.

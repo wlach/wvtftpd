@@ -62,6 +62,8 @@ int main(int argc, char **argv)
     {
 	if (tftps.select(1000))
 	    tftps.callback();
+	else
+	    cfg.flush();
     }
     cfg.save();
 }
