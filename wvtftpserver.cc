@@ -18,7 +18,7 @@
  */
 
 #include "wvtftpserver.h"
-#include "strutils.h"
+#include "wvstrutils.h"
 #include "wvtimeutils.h"
 #include <sys/stat.h>
 #include <ctype.h>
@@ -26,6 +26,10 @@
 WvTFTPServer::WvTFTPServer(UniConf &_cfg, int _tftp_tick)
     : WvTFTPBase(_tftp_tick, _cfg["TFTP"]["Port"].getmeint(69)), cfg(_cfg)
 {
+    bool updated = update_cfg("TFTP Aliases");
+    updated |= update_cfg("TFTP Alias Once");
+    if (updated)
+	log(WvLog::Info, "Converted old configuration file.\n");
     log(WvLog::Info, "WvTFTP listening on %s.\n", *local());
 }
 
@@ -33,6 +37,31 @@ WvTFTPServer::WvTFTPServer(UniConf &_cfg, int _tftp_tick)
 WvTFTPServer::~WvTFTPServer()
 {
     log(WvLog::Info, "WvTFTP shutting down.\n");
+}
+
+
+bool WvTFTPServer::update_cfg(WvStringParm section)
+{
+    bool updated = false;
+    UniConf::Iter i(cfg[section]);
+    for (i.rewind(); i.next(); )
+    {
+	if (i().haschildren())
+	    continue;
+	updated = true;
+	WvString name(i().key().printable());
+	char *p = strchr(name.edit(), ' ');
+	if (!p)
+	    cfg[section]["default"][name].setme(i().getme());
+	else
+	{
+	    *p = 0;
+	    cfg[section][name][p+1].setme(i().getme());
+	}
+	i().remove();
+    }
+    cfg.commit();
+    return updated;
 }
 
 
@@ -201,13 +230,13 @@ WvString WvTFTPServer::check_aliases(TFTPConn *c)
 	return WvString("");
 
     bool alias_once_fn_only = false;
-    WvIPAddr clientportless = static_cast<WvIPAddr>(c->remote);
+    WvString clientportless(static_cast<WvIPAddr>(c->remote));
 
-    WvString alias(cfg["TFTP Alias Once"][WvString("%s %s", clientportless,
-						   c->filename)].getme(""));
+    WvString alias(cfg["TFTP Alias Once"][clientportless]
+		      [c->filename].getme(""));
     if (!alias)
     {
-	alias = cfg["TFTP Alias Once"][c->filename].getme("");
+	alias = cfg["TFTP Alias Once/default"][c->filename].getme("");
 	alias_once_fn_only = true;
     }
 
@@ -215,16 +244,16 @@ WvString WvTFTPServer::check_aliases(TFTPConn *c)
     {
 	log(WvLog::Debug4, "Alias once is \"%s\".\n", alias);
 	c->alias_once = true;
-	c->alias = cfg["TFTP Alias Once"][WvString("%s%s",
-						   alias_once_fn_only ?
-						   WvString("") :
-						   WvString("%s ", clientportless),
-						   c->filename)];
+	c->alias = cfg["TFTP Alias Once"]
+	              [alias_once_fn_only ? WvString("default")
+		                          : clientportless]
+                      [c->filename];
     }
     else
     {
-	alias = cfg["TFTP Aliases"][WvString("%s %s", clientportless,
-					     c->filename)].getme(cfg["TFTP Aliases"][c->filename].getme(""));
+	alias = cfg["TFTP Aliases"][clientportless][c->filename].getme(
+	    cfg["TFTP Aliases/default"][c->filename].getme("")
+	    );
 	log(WvLog::Debug4, "Alias is \"%s\".\n", alias);
     }
 

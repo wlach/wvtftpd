@@ -132,8 +132,8 @@ overrides take precedence over regular overrides.
 For example:
 
 [TFTP Aliases]
-image = image2_4.img
-192.168.0.43 image = image2_5b.img
+default/image = image2_4.img
+192.168.0.43/image = image2_5b.img
 
 In this instance, if a user at 192.168.0.43 attempted to download the 
 file "image", the file "image2_5b.img" would actually be sent.  Users 

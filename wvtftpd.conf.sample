@@ -4,6 +4,6 @@ Default File = kernel
 Strip Prefix = /tftp
 
 [TFTP Aliases]
-kernel = main_image
-192.168.0.43 kernel = image_43
+default/kernel = main_image
+192.168.0.43/kernel = image_43
 

@@ -41,7 +41,8 @@ private:
     int validate_access(TFTPConn *c);
     WvString check_aliases(TFTPConn *c);
 
-    /** Returns true if good filename after checking for aliases, basedir, and default file.
+    /** Returns true if good filename.
+     * First checks for aliases, basedir, and default file.
      * Puts new filename in c->filename.
      */
     bool check_filename(TFTPConn *c);
@@ -52,6 +53,11 @@ private:
      * value.
      */
     unsigned int process_options(TFTPConn *c, unsigned int opts_start);
+
+    /** Checks for old WvConf-style cfg and converts to new UniConf style.
+     * Returns true if an update was actually performed.
+     */
+    bool update_cfg(WvStringParm section);
 };
 
 #endif // __WVTFTPSERVER_H

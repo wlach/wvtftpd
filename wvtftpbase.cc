@@ -18,7 +18,7 @@
  */
 
 #include "wvtftpbase.h"
-#include "strutils.h"
+#include "wvstrutils.h"
 #include "wvtimeutils.h"
 #include <assert.h>
 
