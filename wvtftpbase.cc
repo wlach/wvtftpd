@@ -47,7 +47,7 @@ void WvTFTPBase::handle_packet()
         // Packet should be an ack.
         if (opcode != ACK)
         {
-            log(WvLog::Debug, "Badly formed packet; aborting.\n");
+            log(WvLog::Debug, "Badly formed packet (read); aborting.\n");
             send_err(4);
             fclose(c->tftpfile);
             conns.remove(c);
@@ -113,7 +113,7 @@ void WvTFTPBase::handle_packet()
         // Packet should be data.
         if (opcode != DATA)
         {
-            log(WvLog::Debug, "Badly formed packet; aborting.\n");
+            log(WvLog::Debug, "Badly formed packet (write); aborting.\n");
             send_err(4);
             fclose(c->tftpfile);
             conns.remove(c);

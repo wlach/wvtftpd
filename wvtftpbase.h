@@ -49,9 +49,14 @@ public:
         bool donefile;              // done reading from the file?
         bool send_oack;             // do we need to or did we send an OACK?
         time_t stamp;               // time that we last sent a packet
-        char * oack;                // Holds the OACK packet in case we need
+        char oack[512];             // Holds the OACK packet in case we need
         size_t oacklen;             //     to resend it.
         int numtimeouts;
+	
+	TFTPConn()
+	    { tftpfile = NULL; }
+	~TFTPConn()
+	    { if (tftpfile) fclose(tftpfile); }
     };
 
     DeclareWvDict(TFTPConn, WvIPPortAddr, remote);

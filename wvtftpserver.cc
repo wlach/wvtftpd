@@ -34,7 +34,6 @@ void WvTFTPServer::execute()
             {
                 log(WvLog::Debug,"Max timeouts reached; aborting transfer.\n");
                 send_err(0, "Too many timeouts.");
-                fclose(i().tftpfile);
                 conns.remove(&i());
             }
             else if (i().send_oack)
@@ -62,7 +61,19 @@ void WvTFTPServer::execute()
         if (!conns[remaddr])
             new_connection();
         else
-            handle_packet();
+	{
+	    TFTPOpcode opcode = (TFTPOpcode)(packet[0] * 256 + packet[1]);
+	    
+	    if (opcode == RRQ)
+	    {
+		// last transaction was interrupted, and they're starting over,
+		// I guess.
+		conns.remove(conns[remaddr]);
+		new_connection();
+	    }
+	    else
+		handle_packet();
+	}
     }
 }
 
@@ -289,7 +300,6 @@ void WvTFTPServer::new_connection()
         {
             log(WvLog::Debug, "File already exists; aborting.\n");
             send_err(6);
-            fclose(newconn->tftpfile);
             delete newconn;
             return;
         }
@@ -314,7 +324,6 @@ void WvTFTPServer::new_connection()
     ch++;
     if (ch < packetsize)
     {
-        newconn->oack = new char[512];
         // One or more options available for reading.
         newconn->oack[0] = 0;
         newconn->oack[1] = 6;
@@ -337,7 +346,6 @@ void WvTFTPServer::new_connection()
                             "Badly formed option %s.  Aborting.\n",
                             (i==0) ? "name" : "value");
                         send_err(8);
-                        fclose(newconn->tftpfile);
                         delete newconn;
                         return;
                     }
@@ -359,7 +367,6 @@ void WvTFTPServer::new_connection()
                         newconn->blksize);
                     log(WvLog::Debug, "%s\n", message);
                     send_err(8, message);
-                    fclose(newconn->tftpfile);
                     delete newconn;
                     return;
                 }
@@ -407,7 +414,6 @@ void WvTFTPServer::new_connection()
                         newconn->tsize);
                     log(WvLog::Debug, "%s\n", message);
                     send_err(8, message);
-                    fclose(newconn->tftpfile);
                     delete newconn;
                     return;
                 }
@@ -422,7 +428,6 @@ void WvTFTPServer::new_connection()
                                 "Cannot get stats for file.  Aborting.";
                            log(WvLog::Debug, "%s\n", message);
                            send_err(8, message);
-                           fclose(newconn->tftpfile);
                            delete newconn;
                            return;
                         }
@@ -456,7 +461,6 @@ void WvTFTPServer::new_connection()
             log(WvLog::Debug, "Unknown mode string \"%s\"; aborting.\n",
                 &packet[modestart]);
             send_err(4);
-            fclose(newconn->tftpfile);
             delete newconn;
             return;
         }
