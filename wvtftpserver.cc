@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "wvtftpserver.h"
 #include "strutils.h"
+#include <sys/stat.h>
 
 WvTFTPServer::WvTFTPServer(WvString _basedir, int _tftp_tick, int def_timeout)
     : WvTFTPBase(_tftp_tick, def_timeout, 69), basedir(_basedir)
@@ -25,7 +26,15 @@ void WvTFTPServer::execute()
         if (difftime(time(0), i().stamp) >= i().timeout)
         {
             log("Timeout on connection from %s.\n", i().client);
-            if (i().direction == tftpread)
+            if (i().send_oack)
+            {
+                log(WvLog::Debug5, "Sending oack ");
+                memcpy(packet, i().oack, 512);
+                packetsize = i().oacklen;
+                dump_pkt();
+                write(packet, packetsize);
+            }
+            else if (i().direction == tftpread)
                 send_data(&i(), true);
             else
                 send_ack(&i(), true);
@@ -122,90 +131,6 @@ void WvTFTPServer::new_connection()
     newconn->pktclump = 3;
     newconn->unack = 0;
     newconn->donefile = false;
-
-    newconn->send_oack = false;
-    char oack[512];
-    size_t oacklen = 0;
-    // Look for options.
-    ch++;
-    if (ch < packetsize)
-    {
-        // One or more options available for reading.
-        oack[0] = 0;
-        oack[1] = 6;
-        oacklen = 2;
-        char * oackp = &oack[2];
-        char * optname = &packet[ch];
-        char * optvalue;
-        while (ch < packetsize-1)
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                while (packet[++ch])
-                {
-                    if (ch == packetsize)
-                    {    
-                        log(WvLog::Debug4,
-                            WvString("Badly formed option %s.  Aborting.\n",
-                            (i==0) ? "name" : "value"));
-                        send_err(8);
-                        delete newconn;
-                        return;
-                    }
-                }
-                if (!i)
-                    optvalue = &packet[ch+1];
-            }
-            wvcon->print("Option %s, value %s.\n", optname, optvalue);
-            strlwr(optname);
-            wvcon->print("Option is now %s.\n", optname);
-
-            if (!strcmp(optname, "blksize"))
-            {
-                newconn->blksize = atoi(optvalue);
-                if (newconn->blksize < 8 || newconn->blksize > 65464)
-                {
-                    WvString message = WvString(
-                        "Request for blksize of %s is invalid.  Aborting.",
-                        newconn->blksize);
-                    log(WvLog::Debug4, WvString("%s\n", message));
-                    send_err(8, message);
-                    delete newconn;
-                    return;
-                }
-                else
-                {
-                    log(WvString("blksize option enabled (%s octets).\n",
-                        newconn->blksize));
-                    strcpy(oackp, optname);
-                    oackp += strlen(optname) + 1;
-                    oacklen += strlen(optname) + 1;
-                    strcpy(oackp, optvalue);
-                    oackp += strlen(optvalue) + 1;
-                    oacklen += strlen(optvalue) + 1;
-                }
-            }
-        }
-        if (oacklen)
-            newconn->send_oack = true;
-        if (!strcmp(&packet[modestart], "netascii"))
-            newconn->mode = netascii;
-        else if (!strcmp(&packet[modestart], "octet"))
-           newconn->mode = octet;
-        else if (!strcmp(&packet[modestart], "mail"))
-           newconn->mode = mail;
-        else
-        { 
-            log(WvLog::Debug4,
-                WvString("Unknown mode string \"%s\"; discarding.\n",
-                &packet[modestart]));
-            send_err(4);
-            delete newconn;
-            return;
-        }
-    }
-
-    newconn->stamp = time(0);
     if (newconn->direction == tftpread)
     {
         if (newconn->mode == netascii)
@@ -232,6 +157,7 @@ void WvTFTPServer::new_connection()
         {
             log(WvLog::Debug4, "File already exists; aborting.\n");
             send_err(6);
+            fclose(newconn->tftpfile);
             delete newconn;
             return;
         }
@@ -249,6 +175,162 @@ void WvTFTPServer::new_connection()
             return;
         }
     }
+
+    newconn->send_oack = false;
+    newconn->oacklen = 0;
+    // Look for options.
+    ch++;
+    if (ch < packetsize)
+    {
+        newconn->oack = new char[512];
+        // One or more options available for reading.
+        newconn->oack[0] = 0;
+        newconn->oack[1] = 6;
+        newconn->oacklen = 2;
+        char * oackp = &(newconn->oack[2]);
+        char * optname;
+        char * optvalue;
+        while (ch < packetsize-1)
+        {
+            optname = &packet[ch];
+            for (int i = 0; i < 2; i++)
+            {
+                while (packet[++ch])
+                {
+                    if (ch == packetsize)
+                    {    
+                        log(WvLog::Debug4,
+                            WvString("Badly formed option %s.  Aborting.\n",
+                            (i==0) ? "name" : "value"));
+                        send_err(8);
+                        fclose(newconn->tftpfile);
+                        delete newconn;
+                        return;
+                    }
+                }
+                if (!i)
+                    optvalue = &packet[ch+1];
+            }
+            ch++;
+            wvcon->print("Option %s, value %s.\n", optname, optvalue);
+            strlwr(optname);
+            wvcon->print("Option is now %s.\n", optname);
+
+            if (!strcmp(optname, "blksize"))
+            {
+                newconn->blksize = atoi(optvalue);
+                if (newconn->blksize < 8 || newconn->blksize > 65464)
+                {
+                    WvString message = WvString(
+                        "Request for blksize of %s is invalid.  Aborting.",
+                        newconn->blksize);
+                    log(WvLog::Debug4, WvString("%s\n", message));
+                    send_err(8, message);
+                    fclose(newconn->tftpfile);
+                    delete newconn;
+                    return;
+                }
+                else
+                {
+                    log(WvString("blksize option enabled (%s octets).\n",
+                        newconn->blksize));
+                    strcpy(oackp, optname);
+                    oackp += strlen(optname) + 1;
+                    newconn->oacklen += strlen(optname) + 1;
+                    strcpy(oackp, optvalue);
+                    oackp += strlen(optvalue) + 1;
+                    newconn->oacklen += strlen(optvalue) + 1;
+                }
+            }
+            else if (!strcmp(optname, "timeout"))
+            {
+                int newtimeout = atoi(optvalue);
+                if (newtimeout*1000 < tftp_tick || newtimeout > 255)
+                {
+                    log(WvLog::Debug4, WvString(
+                        "Request for timeout of %s is invalid.  Ignoring.",
+                        newtimeout));
+                }
+                else
+                {
+                    newconn->timeout = newtimeout;
+                    log(WvString("timeout option enabled (%s seconds).\n",
+                        newconn->timeout));
+                    strcpy(oackp, optname);
+                    oackp += strlen(optname) + 1;
+                    newconn->oacklen += strlen(optname) + 1;
+                    strcpy(oackp, optvalue);
+                    oackp += strlen(optvalue) + 1;
+                    newconn->oacklen += strlen(optvalue) + 1;
+                }
+            }
+            else if (!strcmp(optname, "tsize"))
+            {
+                newconn->tsize = atoi(optvalue);
+                if (newconn->tsize < 0)
+                {
+                    WvString message = WvString(
+                        "Request for tsize of %s is invalid.  Aborting.",
+                        newconn->tsize);
+                    log(WvLog::Debug4, WvString("%s\n", message));
+                    send_err(8, message);
+                    fclose(newconn->tftpfile);
+                    delete newconn;
+                    return;
+                }
+                else
+                {
+                    if (newconn->tsize == 0 && newconn->direction == tftpread)
+                    {
+                        struct stat * tftpfilestat = new struct stat;
+                        if (stat(newconn->filename, tftpfilestat) != 0)
+                        {
+                            WvString message = 
+                                "Cannot get stats for file.  Aborting.";
+                           log(WvLog::Debug4, WvString("%s\n", message));
+                           send_err(8, message);
+                           fclose(newconn->tftpfile);
+                           delete newconn;
+                           return;
+                        }
+                        newconn->tsize = tftpfilestat->st_size;
+                        delete tftpfilestat;
+                    }
+                    WvString oacktsize = WvString("%s", newconn->tsize);
+                    log(WvString("tsize option enabled (%s octets).\n",
+                        newconn->tsize));
+                    strcpy(oackp, optname);
+                    oackp += strlen(optname) + 1;
+                    newconn->oacklen += strlen(optname) + 1;
+                    strcpy(oackp, oacktsize.edit());
+                    oackp += oacktsize.len() + 1;
+                    newconn->oacklen += oacktsize.len() + 1;
+                }
+            }
+        }
+        if (newconn->oacklen)
+            newconn->send_oack = true;
+        else
+            delete newconn->oack;
+        if (!strcmp(&packet[modestart], "netascii"))
+            newconn->mode = netascii;
+        else if (!strcmp(&packet[modestart], "octet"))
+           newconn->mode = octet;
+        else if (!strcmp(&packet[modestart], "mail"))
+           newconn->mode = mail;
+        else
+        { 
+            log(WvLog::Debug4,
+                WvString("Unknown mode string \"%s\"; discarding.\n",
+                &packet[modestart]));
+            send_err(4);
+            fclose(newconn->tftpfile);
+            delete newconn;
+            return;
+        }
+    }
+
+    newconn->stamp = time(0);
     alarm(tftp_tick);
     conns.add(newconn, true);
     if (newconn->direction == tftpread)
@@ -258,8 +340,8 @@ void WvTFTPServer::new_connection()
         if (newconn->send_oack)
         {
             log(WvLog::Debug5, "Sending oack ");
-            memcpy(packet, oack, 512);
-            packetsize = oacklen;
+            memcpy(packet, newconn->oack, 512);
+            packetsize = newconn->oacklen;
             dump_pkt();
             write(packet, packetsize);
         }

@@ -56,6 +56,7 @@ void WvTFTPBase::handle_packet()
         if (blocknum == 0 && c->send_oack)
         {
             c->send_oack = false;
+            delete c->oack;
             log("last sent: %s unack: %s pktclump: %s\n",c->lastsent, c->unack,
                 c->pktclump);
             int pktsremain = static_cast<int>(c->lastsent) -
