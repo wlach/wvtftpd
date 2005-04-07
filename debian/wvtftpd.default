@@ -1,0 +1,6 @@
+# Default settings for wvtftpd. This file is sourced by /bin/sh from
+# /etc/init.d/wvtftpd.
+
+# These are the options that we pass to the $WVTFTPD.
+# Don't run TCP or SSL, but run a Unix socket at /var/lib/uniconf/control
+WVTFTPD_OPTS=""

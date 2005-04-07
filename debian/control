@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: Simon Law <sfllaw@debian.org>
 Uploaders: Patrick Patterson <ppatters@debian.org>
-Build-Depends: debhelper (>> 4.0.0), libwvstreams4.0-dev
+Build-Depends: debhelper (>> 4.0.0), libwvstreams4.1-dev
 Standards-Version: 3.6.1
 
 Package: wvtftpd

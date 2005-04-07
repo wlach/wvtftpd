@@ -32,7 +32,7 @@ starts, it first loads its configuration from
 which contains basic information about which files you want transferred, who
 should get those files, etc.
 .SH OPTIONS
-There are only a couple of options currently recognised by
+There are a number of options currently recognised by
 .BR wvtftpd .
 .TP
 .B "\-V"
@@ -40,14 +40,19 @@ Prints the current
 .B wvtftpd
 version information and exits.
 .TP
-.B "\-d"
-Displays debug information for troubleshooting
-.BR wvtftpd
+.B "\-q"
+Decrease log level (can be used multiple times)
 .TP
-.B "\-dd"
-Displays a lot of debug information for troubleshooting
-.BR wvtftpd .
+.B "\-v"
+Increase log level (can be used multiple times)
+.br
 Use this option when reporting any bugs or problems with the program.
+.TP
+.B "\-d"
+Fork into the background and return (implies -s)
+.TP
+.B "\-s"
+Write log entries to syslog
 .SH BUGS
 Probably very few, but if you find any, please report them to us.  There is a
 mailing list for discussion about
