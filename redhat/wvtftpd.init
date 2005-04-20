@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+# wvtftpd        Starts wvtftpd.
+#
+#
+# chkconfig: 345 12 88
+# description: tftp server
+# processname: wvtftpd
+# pidfile: /var/run/wvtftpd.pid
+
+# Source function library.
+. /etc/init.d/functions 
+
+[ -f /usr/sbin/wvtftpd ] || exit 0
+
+WVTFTPD_OPTIONS=""
+
+RETVAL=0
+
+umask 077
+
+start() {
+        echo -n $"Starting wvtftpd: "
+        daemon wvtftpd -d $WVTFTPD_OPTIONS
+        RETVAL=$?
+        echo
+        return $RETVAL
+}
+stop() {
+        echo -n $"Shutting down wvtftpd: "
+        killproc wvtftpd
+        RETVAL=$?
+        echo
+        return $RETVAL
+}
+rhstatus() {
+        status wvsyslogd
+}
+restart() {
+        stop
+        start
+}
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        rhstatus
+        ;;
+  restart|reload)
+        restart
+        ;;
+  condrestart)
+        [ -f /var/run/wvtftpd.pid ] && restart || :
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|status|restrt|condrestart}"
+        exit 1
+esac
+
+exit $?
+

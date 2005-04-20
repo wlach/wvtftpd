@@ -62,5 +62,14 @@ uninstall:
 clean:
 	rm -f wvtftpd
 
+ifdef PKGSNAPSHOT
+SNAPDATE=+$(shell date +%Y%m%d)
+endif
+
+dist-hook:
+	sed -e "s/Version\: @PKGVER@/Version\: $(PKGVER)$(SNAPDATE)/" \
+		redhat/wvtftpd.spec.in > redhat/wvtftpd.spec
+
+
 .PHONY: clean all install uninstall
 
