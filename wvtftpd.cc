@@ -50,6 +50,8 @@ private:
 
 int main(int argc, char **argv)
 {
+    WvLog log("WvTFTP", WvLog::Critical);
+    // UniConfRoot cfg("cache:subtree:unix:/tmp/uniconfd /cfg");
     UniConfRoot cfg("ini:/etc/wvtftpd.conf");
     WvTFTPDaemon d(cfg);
 

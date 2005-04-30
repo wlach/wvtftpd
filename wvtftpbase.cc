@@ -110,9 +110,9 @@ void WvTFTPBase::handle_packet()
         if (blocknum > c->unack + 32000)
             blocknum = (mult - 1) * 65536 + small_blocknum;
         log(WvLog::Debug5,
-	    "Handle: got small_blocknum %s; unack is %s; lastsent is %s; "
-            "blocknum is %s.\n",
-            small_blocknum, c->unack, c->lastsent, blocknum);
+	    "Handle: ack blocknum=%s(%s), unack=%s, lastsent=%s, "
+            "prefetch=%s\n",
+            small_blocknum, blocknum, c->unack, c->lastsent, c->pktclump);
 	
         if (blocknum == 0 && c->send_oack)
         {
