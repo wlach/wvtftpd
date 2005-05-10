@@ -57,7 +57,7 @@ private:
     /** Checks for old WvConf-style cfg and converts to new UniConf style.
      * Returns true if an update was actually performed.
      */
-    bool update_cfg(WvStringParm section);
+    bool update_cfg(WvStringParm oldsect, WvStringParm newsect);
 };
 
 #endif // __WVTFTPSERVER_H

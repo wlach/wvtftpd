@@ -18,7 +18,6 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
 #include "uniconfroot.h"
 #include "wvstreamsdaemon.h"
 #include "wvtftpserver.h"
@@ -29,20 +28,39 @@
 class WvTFTPDaemon : public WvStreamsDaemon
 {
 public:
-    WvTFTPDaemon(const UniConf &_cfg) :
-        WvStreamsDaemon("wvtftpd", WVTFTP_VER_STRING, 
-                        WvStreamsDaemonCallback(this, &WvTFTPDaemon::cb)),
-        cfg(_cfg),
-        log("wvtftpd", WvLog::Info)
-        {
-        }
-    void cb(WvStreamsDaemon &daemon, void *) { 
+    WvTFTPDaemon()
+	: WvStreamsDaemon("wvtftpd", WVTFTP_VER_STRING, 
+			  WvStreamsDaemonCallback(this, &WvTFTPDaemon::cb)),
+          cfgmoniker("ini:/etc/wvtftpd.conf"), log("wvtftpd", WvLog::Info)
+    {
+	args.add_option('c', "config", "Config file",
+			"ini:filename.ini", cfgmoniker);
+    }
+    
+    virtual ~WvTFTPDaemon()
+    {
+	cfg.commit();
+    }
+    
+    void cb(WvStreamsDaemon &daemon, void *)
+    {
+	cfg.unmount(cfg.whichmount(), true); // just in case
+	cfg.mount(cfgmoniker);
+	if (!cfg.whichmount() || !cfg.whichmount()->isok())
+	{
+	    log(WvLog::Error,
+		"Can't read configuration from '%s'! Aborting.\n",
+		cfgmoniker);
+	    return;
+	}
+	
         tftps = new WvTFTPServer(cfg, 100);
         add_die_stream(tftps, true, "WvTFTP");
     }
 
 private:
-    UniConf cfg;
+    WvString cfgmoniker;
+    UniConfRoot cfg;
     WvTFTPServer *tftps;
     WvLog log; 
 };
@@ -50,12 +68,5 @@ private:
 
 int main(int argc, char **argv)
 {
-    WvLog log("WvTFTP", WvLog::Critical);
-    // UniConfRoot cfg("cache:subtree:unix:/tmp/uniconfd /cfg");
-    UniConfRoot cfg("ini:/etc/wvtftpd.conf");
-    WvTFTPDaemon d(cfg);
-
-    int retval = d.run(argc, argv);
-    cfg.commit();
-    return retval;
+    return WvTFTPDaemon().run(argc, argv);
 }

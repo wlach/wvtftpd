@@ -24,19 +24,19 @@
 #include <ctype.h>
 
 WvTFTPServer::WvTFTPServer(UniConf &_cfg, int _tftp_tick)
-    : WvTFTPBase(_tftp_tick, _cfg["TFTP"]["Port"].getmeint(69)), cfg(_cfg)
+    : WvTFTPBase(_tftp_tick, _cfg["TFTP/Port"].getmeint(69)), cfg(_cfg)
 {
-    bool updated = update_cfg("TFTP Aliases");
-    updated |= update_cfg("TFTP Alias Once");
+    bool updated = update_cfg("TFTP Aliases", "TFTP/Aliases");
+    updated |= update_cfg("TFTP Alias Once", "TFTP/Alias Once");
     if (updated)
-	log(WvLog::Info, "Converted old configuration file.\n");
+	log(WvLog::Info, "Converted old-style TFTP configuration.\n");
 
     if (isok())
         log(WvLog::Info, "WvTFTP listening on %s.\n", *local());
     else
     {
-        log(WvLog::Error, "Could not listen on port %s. Are you root?\n", 
-            _cfg["TFTP"]["Port"].getmeint(69));
+        log(WvLog::Error, "Can't listen on port %s: %s\nAre you root?\n",
+            cfg["TFTP/Port"].getmeint(69), errstr());
     }
 }
 
@@ -47,10 +47,10 @@ WvTFTPServer::~WvTFTPServer()
 }
 
 
-bool WvTFTPServer::update_cfg(WvStringParm section)
+bool WvTFTPServer::update_cfg(WvStringParm oldsect, WvStringParm newsect)
 {
     bool updated = false;
-    UniConf::Iter i(cfg[section]);
+    UniConf::Iter i(cfg[oldsect]);
     for (i.rewind(); i.next(); )
     {
 	if (i().haschildren())
@@ -59,13 +59,13 @@ bool WvTFTPServer::update_cfg(WvStringParm section)
 	WvString name(i().key().printable());
 	char *p = strchr(name.edit(), ' ');
 	if (!p)
-	    cfg[section]["default"][name].setme(i().getme());
+	    cfg[newsect]["default"][name].setme(i().getme());
 	else
 	{
 	    *p = 0;
-	    cfg[section][name][p+1].setme(i().getme());
+	    cfg[newsect][name][p+1].setme(i().getme());
 	}
-	i().remove();
+	// i().remove(); // removing old entries kills downgrades!
     }
     cfg.commit();
     return updated;
@@ -239,11 +239,11 @@ WvString WvTFTPServer::check_aliases(TFTPConn *c)
     bool alias_once_fn_only = false;
     WvString clientportless(static_cast<WvIPAddr>(c->remote));
 
-    WvString alias(cfg["TFTP Alias Once"][clientportless]
+    WvString alias(cfg["TFTP/Alias Once"][clientportless]
 		      [c->filename].getme(""));
     if (!alias)
     {
-	alias = cfg["TFTP Alias Once/default"][c->filename].getme("");
+	alias = cfg["TFTP/Alias Once/default"][c->filename].getme("");
 	alias_once_fn_only = true;
     }
 
@@ -251,15 +251,15 @@ WvString WvTFTPServer::check_aliases(TFTPConn *c)
     {
 	log(WvLog::Debug4, "Alias once is \"%s\".\n", alias);
 	c->alias_once = true;
-	c->alias = cfg["TFTP Alias Once"]
+	c->alias = cfg["TFTP/Alias Once"]
 	              [alias_once_fn_only ? WvString("default")
 		                          : clientportless]
                       [c->filename];
     }
     else
     {
-	alias = cfg["TFTP Aliases"][clientportless][c->filename].getme(
-	    cfg["TFTP Aliases/default"][c->filename].getme("")
+	alias = cfg["TFTP/Aliases"][clientportless][c->filename].getme(
+	    cfg["TFTP/Aliases/default"][c->filename].getme("")
 	    );
 	log(WvLog::Debug4, "Alias is \"%s\".\n", alias);
     }
@@ -286,10 +286,10 @@ void WvTFTPServer::new_connection()
     WvIPAddr clientportless = static_cast<WvIPAddr>(c->remote);
     UniConfKey clientportlessk = UniConfKey(clientportless);
 
-    if (!cfg["Registered TFTP Clients"][clientportlessk].getmeint(
-             cfg["New TFTP Clients"][clientportlessk].getmeint(false)))
+    if (!cfg["TFTP/Registered Clients"][clientportlessk].getmeint(
+             cfg["TFTP/New Clients"][clientportlessk].getmeint(false)))
     {
-        cfg["New TFTP Clients"][clientportlessk].setmeint(true);
+        cfg["TFTP/New Clients"][clientportlessk].setmeint(true);
     }
 
     // Make sure the filename and mode actually end with nulls.
@@ -499,7 +499,7 @@ void WvTFTPServer::new_connection()
 bool WvTFTPServer::check_filename(TFTPConn *c)
 {
     // Strip [TFTP]"Strip prefix" from filename, then compare it to 
-    // [TFTP Aliases] entries.  If nothing is found, then add [TFTP]"Base dir"
+    // [TFTP/Aliases] entries.  If nothing is found, then add [TFTP]"Base dir"
     // and try again.
 
     WvString strip_prefix = cfg["TFTP"]["Strip prefix"].getme("");
