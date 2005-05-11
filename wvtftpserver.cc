@@ -406,7 +406,7 @@ void WvTFTPServer::new_connection()
     }
     else
     {
-        // check_filename() has already ensure that the file is not there
+        // check_filename() has already ensured that the file is not there
         // or that the user is allowed to overwrite it.
         umask(011);
         if (c->mode == netascii)
@@ -574,8 +574,6 @@ bool WvTFTPServer::check_filename(TFTPConn *c)
         // create it if the config is set.
         if (cfg["TFTP"]["Client directory"].getmeint())
         {
-            // Basedir ends in a slash, so stat will fail if the client
-            // directory is actually a file.
             log(WvLog::Debug, "BaseDir: %s\n", basedir);
             struct stat tftpdirstat;
             if (stat(basedir, &tftpdirstat) != 0)
@@ -602,6 +600,15 @@ bool WvTFTPServer::check_filename(TFTPConn *c)
                     send_err(2);
                     return false;
                 }
+            }
+            else if (!S_ISDIR(tftpdirstat.st_mode))
+            {
+                // There was some kind of error other than the directory
+                // not existing (like the path is a file).  Fail.
+                log(WvLog::Debug, "Specified path is not a directory: %s\n",
+                    basedir);
+                send_err(2);
+                return false;
             }
         }
     }
