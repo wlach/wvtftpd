@@ -96,6 +96,9 @@ Prefetch = 3
 Readonly = 1
 Default File =
 Strip Prefix = 
+Overwrite existing file = 0
+Clients upload to their own directory = 0
+Create client directory = 0
 
 "Base dir" is the default directory.  If a client requests a file 
 without specifying the full path, the base dir is prepended.
@@ -122,6 +125,24 @@ unavailable.
 
 The path given as "Strip Prefix" is automatically stripped from the
 beginning of any client requests.  This is done before adding "base dir".
+
+"Overwrite existing file" specifies if existing files should be overwritten
+when the client uploads a file with the same name.  If the file exists and
+this is set to 0 then the upload will fail.  The default is to not overwrite
+existing files (0).
+
+"Clients upload to their own directory" specifies if the client IP
+address should be appended to the "Base dir" when a file is uploaded.
+This will cause clients to upload into their own directory.  If the 
+client directory does not exist and the "Create client directory"
+directive is set to false (0) then the upload will fail.  The
+default is to not append the client IP address to the "Base dir"
+when a file is uploaded (0).
+
+"Create client directory" will create the client's directory
+when the client uploads a file.  The directory is a subdirectory of
+"Base dir" and is the IP address of the client (e.g /tftpboot/127.0.0.1).
+The default is to not create the client directory (0).
 
 The second section is [TFTP Aliases].  It contains a list of filename
 overrides and per-client filename overrides. Regular filename overrides

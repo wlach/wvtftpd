@@ -20,8 +20,10 @@
 #include "wvtftpserver.h"
 #include "wvstrutils.h"
 #include "wvtimeutils.h"
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <unistd.h>
 
 WvTFTPServer::WvTFTPServer(UniConf &_cfg, int _tftp_tick)
     : WvTFTPBase(_tftp_tick, _cfg["TFTP/Port"].getmeint(69)), cfg(_cfg)
@@ -404,19 +406,8 @@ void WvTFTPServer::new_connection()
     }
     else
     {
-        if (c->mode == netascii)
-            c->tftpfile = fopen(c->filename, "r");
-        else if (c->mode == octet)
-            c->tftpfile = fopen(c->filename, "rb");
-
-        if (c->tftpfile)
-        {
-            log(WvLog::Info, "File already exists; aborting.\n");
-            send_err(6);
-            delete c;
-            return;
-        }
-
+        // check_filename() has already ensure that the file is not there
+        // or that the user is allowed to overwrite it.
         umask(011);
         if (c->mode == netascii)
             c->tftpfile = fopen(c->filename, "w");
@@ -526,6 +517,16 @@ bool WvTFTPServer::check_filename(TFTPConn *c)
     if (basedir[basedir.len() -1] != '/')
         basedir.append("/");
 
+    // Check to see if the clients write to their own directory and
+    // the tftpdirection is write.  If so, then put the client IP address
+    // bteween the basedir and the rest of the stuff.
+    if (cfg["TFTP"]["Client directory"].getmeint() &&
+        c->direction == tftpwrite)
+    {
+        basedir.append((const WvIPAddr) remaddr);
+        basedir.append("/");
+    }
+
     // If the first char isn't /, add base dir and look for aliases
     // again.  If we don't need to add the base dir, we've already
     // looked for aliases above.
@@ -543,6 +544,65 @@ bool WvTFTPServer::check_filename(TFTPConn *c)
             log(WvLog::Debug4,
 		"Filename after adding basedir and checking for alias is %s.\n",
                 c->filename);
+        }
+    }
+
+    if (c->direction == tftpwrite)
+    {
+        struct stat st;
+        if (stat(c->filename, &st) == 0)
+        {
+            if (cfg["TFTP"]["Overwrite existing file"].getmeint())
+            {
+                if (!(st.st_mode & S_IWOTH))
+                {
+                    log(WvLog::Warning, "File is not world writable.\n");
+                    send_err(2);
+                    return false;
+                }
+                unlink(c->filename);
+            }
+            else
+            {
+                log(WvLog::Info, "File already exists; aborting.\n");
+                send_err(6);
+                return false;
+            }
+        }
+
+        // Check to see if the directory exists for the client.  If not,
+        // create it if the config is set.
+        if (cfg["TFTP"]["Client directory"].getmeint())
+        {
+            // Basedir ends in a slash, so stat will fail if the client
+            // directory is actually a file.
+            log(WvLog::Debug, "BaseDir: %s\n", basedir);
+            struct stat tftpdirstat;
+            if (stat(basedir, &tftpdirstat) != 0)
+            {
+                if (errno == ENOENT &&
+                    cfg["TFTP"]["Create client directory"].getmeint())
+                {
+                    // Create the directory.
+                    if (mkdir(basedir, 0755))
+                    {
+                        // The directory creation failed.
+                        log(WvLog::Warning, "Failed to create directory %s\n",
+                            basedir);
+                        send_err(2);
+                        return false;
+                    }
+                }
+                else
+                {
+                    // There was some kind of error other than the directory
+                    // not existing.  Fail.
+                    log(WvLog::Warning, "Client directory access failed: %s\n",
+                        strerror(errno));
+                    send_err(2);
+                    return false;
+                }
+            }
         }
     }
 
