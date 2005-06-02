@@ -157,7 +157,7 @@ void WvTFTPServer::check_timeouts()
                         i->pktclump);
             }
 
-            if (i->numtimeouts == cfg["TFTP/Max Timeout Count"].getmeint(55))
+            if (i->numtimeouts == cfg["TFTP/Max Timeout Count"].getmeint(80))
             {
                 log(WvLog::Info,"Max timeouts reached; aborting transfer.\n");
                 send_err(0, "Too many timeouts.");
