@@ -119,7 +119,7 @@ void WvTFTPServer::check_timeouts()
         timeout = cfg["TFTP"]["Min Timeout"].getmeint(100);
         if (!i->total_packets)
             timeout = 1000;
-        if ((i->mult * i->mult * i->rtt / i->total_packets) > timeout)
+        else if ((i->mult * i->mult * i->rtt / i->total_packets) > timeout)
             timeout = i->mult * i->mult * i->rtt / i->total_packets;
 	
         struct timeval tv = wvtime();
@@ -157,7 +157,7 @@ void WvTFTPServer::check_timeouts()
                         i->pktclump);
             }
 
-            if (i->numtimeouts == cfg["TFTP/Max Timeout Count"].getmeint(1000))
+            if (i->numtimeouts == cfg["TFTP/Max Timeout Count"].getmeint(55))
             {
                 log(WvLog::Info,"Max timeouts reached; aborting transfer.\n");
                 send_err(0, "Too many timeouts.");
@@ -170,6 +170,7 @@ void WvTFTPServer::check_timeouts()
                 packetsize = i->oacklen;
                 dump_pkt();
                 write(packet, packetsize);
+                i->pkttimes->set(expect_packet, tv);
 		i->timed_out_ignore = i->lastsent; 
             }
             else if (i->direction == tftpread)
