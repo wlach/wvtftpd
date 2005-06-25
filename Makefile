@@ -29,7 +29,7 @@ with_xplc=no
 CXXFLAGS=$(shell pkg-config --cflags libwvstreams)
 LIBS+=$(shell pkg-config --libs libwvstreams)
 else
-XPATH=..
+XPATH=$(TOPDIR)/src
 endif
 
 BINDIR=${prefix}/sbin
