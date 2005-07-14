@@ -144,15 +144,15 @@ option does nothing).  The directory is a subdirectory of "Base dir" and is
 the IP address of the client (e.g /tftpboot/127.0.0.1). The default is to
 not create the client directory (0).
 
-The second section is [TFTP Aliases].  It contains a list of filename
-overrides and per-client filename overrides. Regular filename overrides
-are of the form "filename = newfilename". Per-client filename overrides
-look like "IPAddress filename = clientnewfilename". Per-client filename
-overrides take precedence over regular overrides.
+The second section is [TFTP/Aliases].  It contains a list of filename
+overrides.  You can specify an override for a particular IP address and also
+default overrides for IPs not explicitly listed. Per-client filename
+overrides look like "IPAddress/filename = clientnewfilename". Default
+overrides look like "default/filename = newfilename".
 
 For example:
 
-[TFTP Aliases]
+[TFTP/Aliases]
 default/image = image2_4.img
 192.168.0.43/image = image2_5b.img
 
@@ -161,19 +161,34 @@ file "image", the file "image2_5b.img" would actually be sent.  Users
 from other machines will get the file "image2_4.img" when they request 
 "image".
 
-You can also specify one-time aliases in the [TFTP Alias Once] section.  The
-format is identical to [TFTP Aliases]; you may have global or per-client
-one-time aliases.  When a client asks for a file, WvTftp checks the [TFTP
-Alias Once] section first.  If a match is made, this alias is used, and when
-the download finishes the alias is removed from the section (regardless of
-whether the alias is global or client-specific).  Subsequent matching
-requests will then be checked against [TFTP Aliases] as normal.  Note that
-the [TFTP Alias Once] entry is only removed after a successful download; the
-entry will be left alone if a download fails.
+You can also specify one-time aliases in the [TFTP/Alias Once] section.  The
+format is identical to [TFTP/Aliases]; you may have global or per-client
+one-time aliases.  When a client asks for a file, WvTftp checks the
+[TFTP/Alias Once] section first.  If a match is made, this alias is used,
+and when the download finishes the alias is removed from the section
+(regardless of whether the alias is global or client-specific).  Subsequent
+matching requests will then be checked against [TFTP/Aliases] as normal. 
+Note that the [TFTP/Alias Once] entry is only removed after a successful
+download; the entry will be left alone if a download fails.
 
-The last sections are [Registered TFTP Clients] and [New TFTP Clients]. 
-[Registered TFTP Clients] holds a list of client IP addresses ("192.168.0.43
+The last sections are [TFTP/Registered Clients] and [TFTP/New Clients]. 
+[TFTP/Registered Clients] holds a list of client IP addresses ("192.168.0.43
 = 1") that are known to the server.  When a client attempts to connect, if
-its address is not in [Registered TFTP Clients], it is added to [New TFTP
-Clients]. This has no function inside of WvTFTP itself but might be useful
-in some situations (such as in our Net Integrators).
+its address is not in [TFTP/Registered Clients], it is added to
+[TFTP/New Clients]. This has no function inside of WvTFTP itself but might
+be useful in some situations (such as in our Net Integrators).
+
+Note that UniConf, the configuration system that WvTFTPd uses, may rearrange
+your config file such that all your settings, including [Aliases] and [New
+Clients] and such, will be under the [TFTP] section.  Thus, your config may
+end up looking like this:
+
+[TFTP]
+Port = 69
+...
+Aliases/default/image = image2_4.img
+New Clients/192.168.0.1 = 1
+
+This format and the above examples are completely interchangeable in
+UniConf, but UniConf prefers the latter and will rearrange variables thusly. 
+The above examples use separate sections just for clarity.
