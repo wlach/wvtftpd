@@ -1,3 +1,9 @@
+wvtftpd (0.9.3) unstable; urgency=low
+
+  * New upstream release.
+
+ -- William Lachance <wlach@nit.ca>  Wed, 17 Aug 2005 17:35:00 -0500
+
 wvtftpd (0.9.2) unstable; urgency=low
 
   * New upstream release.
