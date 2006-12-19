@@ -51,7 +51,7 @@ Here's a summary of what makes WvTFTPd special.
 
 - large files: Some TFTP clients and servers can't handle files above 31 MB,
   due to the fact that the block number will roll over.  WvTFTP isn't one of
-  them.  If you experience this problem, get a better client.
+  them.  If you experience this problem with WvTFTP, get a better client.
 
 Compiling and Installing WvTFTPd
 ================================
@@ -92,6 +92,7 @@ Port = 69
 Min Timeout = 100
 Max Timeout = 5000
 Max Timeout Count = 80
+Total Timeout Seconds = 0
 Prefetch = 3
 Readonly = 1
 Default File =
@@ -106,13 +107,23 @@ without specifying the full path, the base dir is prepended.
 "Port" specifies the port WvTFTP should use, if you don't want to use the
 standard, 69, for some reason.
 
-"Min Timeout" gives the minimum timeout value in milliseconds.  WvTFTP will
-retransmit if it does not get an answer in twice the average RTT thus far or
-the "Min Timeout" value, whichever is greater.  You can also specify a "Max
-Timeout" as the maximum waiting time until retransmission.
+"Min Timeout", "Max Timeout", and "Max Timeout Count" all specify values for
+WvTFTP's exponential timeout.  This multiplier starts at 1.  WvTFTP will
+retransmit a packet if it does not get an answer in the average RTT thus far 
+times the square of the current multiplier or the "Min Timeout" value,
+whichever is greater.  The multipler is increased by one for each timeout.
+You can also specify a "Max Timeout" as the maximum waiting time until
+retransmission.
+
+You can also specify a timeout in seconds which will always specify the time
+to retransmission; for example, you can configure WvTFTP to time out every.  This overrides expon
 
 If the number of timeouts reaches "Max Timeout Count", the transfer is
 aborted.
+
+If "Total Timeout Seconds" is specified and not zero, the transfer will be
+aborted if the specified number of seconds elapse from the time of the
+reception of the last packet, regardless of the number of retries.
 
 "Prefetch" specifies the amount of negative latency, that is, how many
 packets are sent out at a time.

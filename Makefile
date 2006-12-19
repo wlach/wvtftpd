@@ -28,8 +28,9 @@ WVSTREAMS_INC=$(shell pkg-config --variable=includedir libwvstreams)
 with_xplc=no
 CXXFLAGS=$(shell pkg-config --cflags libwvstreams)
 LIBS+=$(shell pkg-config --libs libwvstreams)
+XPATH=. ..
 else
-XPATH=$(TOPDIR)/src
+XPATH=. .. $(WVSTREAMS_INC) $(TOPDIR)/src
 endif
 
 BINDIR=${prefix}/sbin
@@ -59,8 +60,17 @@ uninstall:
 	rm -f ${BINDIR}/wvtftpd
 	rm -f ${MANDIR}/man8/wvtftpd.8
 
+test: all t/all.t
+	$(WVTESTRUN) $(MAKE) runtests
+
+runtests: t/all.t
+	WVTEST_MAX_SLOWNESS=0 $(VALGRIND) t/all.t $(TESTNAME)
+	WVTEST_MIN_SLOWNESS=1 t/all.t $(TESTNAME)
+
+t/all.t: $(call objects,t) wvtftp.a $(LIBUNICONF)
+
 clean:
-	rm -f wvtftpd
+	rm -f wvtftpd wvtftp.a
 
 ifdef PKGSNAPSHOT
 SNAPDATE=+$(shell date +%Y%m%d)

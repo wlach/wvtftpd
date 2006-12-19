@@ -52,13 +52,13 @@ WvTFTPServer::~WvTFTPServer()
 bool WvTFTPServer::update_cfg(WvStringParm oldsect, WvStringParm newsect)
 {
     bool updated = false;
-    UniConf::Iter i(cfg[oldsect]);
+    UniConf::RecursiveIter i(cfg[oldsect]);
     for (i.rewind(); i.next(); )
     {
 	if (i().haschildren())
 	    continue;
 	updated = true;
-	WvString name(i().key().printable());
+	WvString name(i().fullkey(cfg[oldsect].fullkey()).printable());
 	char *p = strchr(name.edit(), ' ');
 	if (!p)
 	    cfg[newsect]["default"][name].setme(i().getme());
@@ -97,6 +97,7 @@ void WvTFTPServer::execute()
 	    {
 		// last transaction was interrupted, and they're starting over,
 		// I guess.
+                log(WvLog::Debug1, "New request on %s; resetting.\n", remaddr);
 		conns.remove(conns[remaddr]);
 		new_connection();
 	    }
@@ -109,21 +110,35 @@ void WvTFTPServer::execute()
 
 void WvTFTPServer::check_timeouts()
 {
-    time_t timeout;
+    time_t timeout, sec_timeout = cfg["TFTP"]
+                                     ["Total Timeout Seconds"].getmeint();
 
     TFTPConnDict::Iter i(conns);
     for (i.rewind(); i.next(); )
     {
+        struct timeval tv = wvtime();
         int expect_packet = (i->direction == tftpwrite) ? i->lastsent :
             i->unack;
+
+        if (sec_timeout && (msecdiff(tv, i->last_received) >=
+                            sec_timeout * 1000))
+        {
+            log(WvLog::Info,"%s seconds elapsed since the last packet was "
+                "received; aborting transfer.\n", sec_timeout);
+            setdest(i->remote);
+            send_err(0, "Operation timed out.");
+            conns.remove(&i());
+            i.rewind();
+            continue;
+        }
+
         timeout = cfg["TFTP"]["Min Timeout"].getmeint(100);
+
         if (!i->total_packets)
             timeout = 1000;
         else if ((i->mult * i->mult * i->rtt / i->total_packets) > timeout)
             timeout = i->mult * i->mult * i->rtt / i->total_packets;
 	
-        struct timeval tv = wvtime();
-        
         if (msecdiff(tv, *(i->pkttimes->get(expect_packet))) >= timeout)
         {
             i->numtimeouts++;
@@ -136,53 +151,63 @@ void WvTFTPServer::check_timeouts()
 		msecdiff(tv, *(i->pkttimes->get(expect_packet))),
 		expect_packet);
 		
-            log(WvLog::Debug4, "(packets %s, avg rtt %s, timeout %s, ms elapsed %s)\n",
-                i->total_packets, 
+            log(WvLog::Debug4, "(packets %s, avg rtt %s, timeout %s, ms "
+                "elapsed %s)\n", i->total_packets, 
                 i->total_packets ? i->rtt / i->total_packets : 1000, timeout,
 		msecdiff(tv, *(i->pkttimes->get(expect_packet))));
-            if ((i->mult + 1) * (i->mult + 1) * i->rtt / i->total_packets <
-		(time_t)cfg["TFTP"]["Max Timeout"].getmeint(5000))
-                i->mult++;
-            else
-                log(WvLog::Debug1, "Max timeout reached.\n");
-            log(WvLog::Debug4, "Increasing multiplier to %s.\n", i->mult * i->mult);
-
-            // If the client times out too many times, stop sending it so much
-            // at once - it could be choking on data.
-            if ((i->numtimeouts % 5) == 0 && i->pktclump > 1) 
-            {
-                i->pktclump--;
-                log(WvLog::Debug1, 
-                        "Too many timeouts, reducing prefetch to %s\n", 
-                        i->pktclump);
-            }
 
             if (i->numtimeouts == cfg["TFTP/Max Timeout Count"].getmeint(80))
             {
-                log(WvLog::Info,"Max timeouts reached; aborting transfer.\n");
+                log(WvLog::Info,"Max number of timeouts reached; aborting "
+                    "transfer.\n");
+                setdest(i->remote);
                 send_err(0, "Too many timeouts.");
                 conns.remove(&i());
             }
-            else if (i->send_oack)
-            {
-                log(WvLog::Debug4, "Sending oack ");
-                memcpy(packet, i->oack, 512);
-                packetsize = i->oacklen;
-                dump_pkt();
-                write(packet, packetsize);
-                i->pkttimes->set(expect_packet, tv);
-		i->timed_out_ignore = i->lastsent; 
-            }
-            else if (i->direction == tftpread)
-	    {
-                send_data(&i(), true);
-		i->timed_out_ignore = i->lastsent; 
-	    }
             else
-	    {
-                send_ack(&i(), true);
-		i->timed_out_ignore = i->lastsent; 
-	    }
+            {
+                if ((i->mult + 1) * (i->mult + 1) * i->rtt / i->total_packets <
+                    (time_t)cfg["TFTP"]["Max Timeout"].getmeint(5000))
+                {
+                    i->mult++;
+                    log(WvLog::Debug1, "Multipler increased to %s.\n", i->mult);
+                }
+                else
+                    log(WvLog::Debug1, "Max timeout duration reached; not "
+                        "increasing further.\n");
+
+                // If the client times out too many times, stop sending it so
+                // much at once - it could be choking on data.
+                if ((i->numtimeouts % 5) == 0 && i->pktclump > 1) 
+                {
+                    i->pktclump--;
+                    log(WvLog::Debug1, 
+                        "Too many timeouts, reducing prefetch to %s\n", 
+                        i->pktclump);
+                }
+
+                setdest(i->remote);
+                if (i->send_oack)
+                {
+                    log(WvLog::Debug4, "Sending oack ");
+                    memcpy(packet, i->oack, 512);
+                    packetsize = i->oacklen;
+                    dump_pkt();
+                    write(packet, packetsize);
+                    i->pkttimes->set(expect_packet, tv);
+                    i->timed_out_ignore = i->lastsent; 
+                }
+                else if (i->direction == tftpread)
+                {
+                    send_data(&i(), true);
+                    i->timed_out_ignore = i->lastsent; 
+                }
+                else
+                {
+                    send_ack(&i(), true);
+                    i->timed_out_ignore = i->lastsent; 
+                }
+            }
 	    
 	    // 'i' might be invalid here!!
 	    
@@ -285,6 +310,7 @@ void WvTFTPServer::new_connection()
     TFTPOpcode pktcode = static_cast<TFTPOpcode>(code);
     
     TFTPConn *c = new TFTPConn;
+    c->last_received = wvtime();
     c->remote = remaddr;
     WvIPAddr clientportless = static_cast<WvIPAddr>(c->remote);
     UniConfKey clientportlessk = UniConfKey(clientportless);
@@ -524,7 +550,7 @@ bool WvTFTPServer::check_filename(TFTPConn *c)
     if (cfg["TFTP"]["Client directory"].getmeint() &&
         c->direction == tftpwrite)
     {
-        basedir.append((const WvIPAddr) remaddr);
+        basedir.append(static_cast<WvIPAddr>(c->remote));
         basedir.append("/");
     }
 

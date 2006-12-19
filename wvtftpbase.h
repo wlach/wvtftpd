@@ -92,6 +92,7 @@ public:
 	                            //     has been retransmitted due to
 				    //     timeout, and should thus be ignored
 				    //     in rtt calculations.
+        struct timeval last_received;   // Time the last packet was received.
 	bool alias_once;
 	UniConf alias;
 	

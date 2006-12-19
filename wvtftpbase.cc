@@ -82,6 +82,7 @@ void WvTFTPBase::handle_packet()
     log(WvLog::Debug4, "Handling packet from %s\n", remaddr);
 
     TFTPConn *c = conns[remaddr];
+    c->last_received = wvtime();
     TFTPOpcode opcode = (TFTPOpcode)(packet[0] * 256 + packet[1]);
 
     if (opcode == ERROR)
@@ -163,20 +164,29 @@ void WvTFTPBase::handle_packet()
 		conns.remove(c);
 		c = NULL;
 	    }
-	    else if (blocknum == c->unack)
-	    {
-		// send the next packet if the first unacked packet is the
-		// one being acked.
-		c->unack = blocknum + 1;
-		
-		while ((c->lastsent - c->unack) < c->pktclump - 1)
-		{
-		    if (c->donefile)
-			break;
-		    send_data(c);
-		    c->numtimeouts = 0;
-		}
-	    }
+            else
+            {
+                // send the next packet if the ack comes from one of the
+                // sent data packets.
+                int blocknum_norollover = blocknum +
+                                          (blocknum < c->unack ? 65536 : 0);
+                if (c->unack <= blocknum_norollover &&
+                    blocknum_norollover < (c->unack + c->pktclump))
+                {
+                    c->unack = blocknum + 1;
+
+                    while ((c->lastsent - c->unack) < c->pktclump - 1)
+                    {
+                        if (c->donefile)
+                            break;
+                        send_data(c);
+                        c->numtimeouts = 0;
+                    }
+                }
+                else
+                    log(WvLog::Error, "Received unexpected ACK for block "
+                        "number %s.\n", blocknum);
+            }
         }
 	
 	// 'c' might be invalid here if it was deleted!
