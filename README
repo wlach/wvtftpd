@@ -116,10 +116,9 @@ You can also specify a "Max Timeout" as the maximum waiting time until
 retransmission.
 
 You can also specify a timeout in seconds which will always specify the time
-to retransmission; for example, you can configure WvTFTP to time out every.  This overrides expon
-
-If the number of timeouts reaches "Max Timeout Count", the transfer is
-aborted.
+to retransmission; for example, you can configure WvTFTP to time out every.  This 
+overrides exponential backoff. If the number of timeouts reaches "Max Timeout Count", 
+the transfer is aborted.
 
 If "Total Timeout Seconds" is specified and not zero, the transfer will be
 aborted if the specified number of seconds elapse from the time of the
