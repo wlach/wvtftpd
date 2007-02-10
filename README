@@ -60,7 +60,7 @@ You need to have a recent version of the WvStreams library and header files
 installed on your system to use WvTFTPd.  We recommend version 4.0 or higher.
 You can download WvStreams from
 
-    http://open.nit.ca/wiki/index.php?page=WvStreams
+    http://alumnit.ca/wiki/index.php?page=WvStreams
 
 You also require the "pkg-config" program, unless you want to modify the
 Makefile and insert the appropriate paths.
