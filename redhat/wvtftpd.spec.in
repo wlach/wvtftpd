@@ -1,5 +1,5 @@
 Name: wvtftpd
-Version: @PKGVER@
+Version: @WVTFTP_VERSION@
 Release: 1
 
 Summary: Scarily FAST Trivial FTP Server

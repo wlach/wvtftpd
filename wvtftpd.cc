@@ -18,12 +18,14 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include "uniconfroot.h"
-#include "wvstreamsdaemon.h"
-#include "wvtftpserver.h"
-#include "wvver.h"
+#include <uniconfroot.h>
+#include <wvstreamsdaemon.h>
+#include <wvtftpserver.h>
 #include <signal.h>
 #include <errno.h>
+
+#include "version.h"
+
 
 class WvTFTPDaemon : public WvStreamsDaemon
 {
