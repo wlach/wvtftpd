@@ -20,7 +20,7 @@
  */
 #include <uniconfroot.h>
 #include <wvstreamsdaemon.h>
-#include <wvtftpserver.h>
+#include "wvtftpserver.h"
 #include <signal.h>
 #include <errno.h>
 

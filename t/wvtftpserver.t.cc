@@ -6,7 +6,7 @@
 #include "wvstrutils.h"
 #include "wvtest.h"
 #define private public
-#include "wvtftpserver.h"
+#include "../wvtftpserver.h"
 #undef private
 
 #define PACKETS_EQ(ref_packet,rcvd_packet)                              \
