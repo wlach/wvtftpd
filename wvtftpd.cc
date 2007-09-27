@@ -32,7 +32,7 @@ class WvTFTPDaemon : public WvStreamsDaemon
 public:
     WvTFTPDaemon()
 	: WvStreamsDaemon("wvtftpd", WVTFTP_VER_STRING, 
-			  WvStreamsDaemonCallback(this, &WvTFTPDaemon::cb)),
+			  wv::bind(&WvTFTPDaemon::cb, this, wv::_1, wv::_2)),
           cfgmoniker("ini:/etc/wvtftpd.conf"), log("wvtftpd", WvLog::Info)
     {
 	args.add_option('c', "config", "Config file",
