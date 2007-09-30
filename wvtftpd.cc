@@ -32,7 +32,7 @@ class WvTFTPDaemon : public WvStreamsDaemon
 public:
     WvTFTPDaemon()
 	: WvStreamsDaemon("wvtftpd", WVTFTP_VER_STRING, 
-			  wv::bind(&WvTFTPDaemon::cb, this, wv::_1, wv::_2)),
+			  wv::bind(&WvTFTPDaemon::cb, this)),
           cfgmoniker("ini:/etc/wvtftpd.conf"), log("wvtftpd", WvLog::Info)
     {
 	args.add_option('c', "config", "Config file",
@@ -44,7 +44,7 @@ public:
 	cfg.commit();
     }
     
-    void cb(WvStreamsDaemon &daemon, void *)
+    void cb()
     {
 	cfg.unmount(cfg.whichmount(), true); // just in case
 	cfg.mount(cfgmoniker);
