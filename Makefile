@@ -1,0 +1,58 @@
+PREFIX=/usr/local
+
+WVSTREAMS_INC=
+WVSTREAMS_LIB=
+WVSTREAMS_BIN=$(prefix)/bin
+WVSTREAMS_SRC=.
+
+PC_CFLAGS=$(shell pkg-config --cflags libwvstreams)
+ifeq ($(PC_CFLAGS),)
+ $(error WvStreams does not appear to be installed)
+endif
+CPPFLAGS+=$(PC_CFLAGS)
+
+PC_LIBS=$(shell pkg-config --libs libwvstreams)
+ifeq ($(PC_LIBS),)
+ $(error WvStreams does not appear to be installed)
+endif
+LIBS+=$(PC_LIBS)
+
+include wvrules.mk
+
+BINDIR=${PREFIX}/sbin
+MANDIR=${PREFIX}/share/man
+
+default: all
+
+all: wvtftp.a wvtftpd
+
+wvtftp.a: wvtftpbase.o wvtftpserver.o
+
+wvtftpd t/all.t: LDFLAGS+=-luniconf -lwvstreams -lwvutils -lwvbase
+
+wvtftpd: wvtftp.a 
+
+install: all
+	[ -d ${BINDIR}      ] || install -d ${BINDIR}
+	[ -d ${MANDIR}      ] || install -d ${MANDIR}
+	install -m 0755 wvtftpd ${BINDIR}
+	[ -d ${MANDIR}/man8 ] || install -d ${MANDIR}/man8
+	install -m 0644 wvtftpd.8 ${MANDIR}/man8
+
+uninstall:
+	rm -f ${BINDIR}/wvtftpd
+	rm -f ${MANDIR}/man8/wvtftpd.8
+
+test: all t/all.t
+	$(WVTESTRUN) $(MAKE) runtests
+
+runtests: t/all.t
+	WVTEST_MAX_SLOWNESS=0 $(VALGRIND) t/all.t $(TESTNAME)
+
+t/all.t: $(call objects,t) wvtftp.a
+
+clean:
+	rm -f wvtftpd wvtftp.a t/all.t
+
+.PHONY: clean all install uninstall
+

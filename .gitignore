@@ -1,0 +1,8 @@
+*.[oa]
+*.libs
+*~
+.*.d
+/CC
+/CXX
+t/all.t
+wvtftpd

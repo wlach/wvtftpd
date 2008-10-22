@@ -57,8 +57,7 @@ Compiling and Installing WvTFTPd
 ================================
 
 You need to have a recent version of the WvStreams library and header files
-installed on your system to use WvTFTPd.  We recommend version 4.0 or higher.
-You can download WvStreams from
+installed on your system to use WvTFTPd. You can download WvStreams from
 
     http://alumnit.ca/wiki/index.php?page=WvStreams
 
