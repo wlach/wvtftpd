@@ -18,6 +18,11 @@ endif
 LIBS+=$(PC_LIBS)
 
 include wvrules.mk
+include config.mk
+
+config.mk:
+	@echo "Please run ./configure. Stop."
+	@exit 1
 
 BINDIR=${PREFIX}/sbin
 MANDIR=${PREFIX}/share/man
@@ -53,6 +58,9 @@ t/all.t: $(call objects,t) wvtftp.a
 
 clean:
 	rm -f wvtftpd wvtftp.a t/all.t
+
+distclean:
+	rm -f config.mk version.h
 
 .PHONY: clean all install uninstall
 

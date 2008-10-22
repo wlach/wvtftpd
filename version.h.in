@@ -1,1 +1,6 @@
-#define WVTFTP_VER_STRING "@WVTFTP_VERSION@"
+#ifndef __VERSION_H
+#define __VERSION_H
+
+#define WVTFTP_VER_STRING		"@PACKAGE_VERSION@"
+
+#endif // __VERSION_H
