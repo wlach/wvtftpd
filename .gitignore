@@ -4,7 +4,7 @@
 .*.d
 /CC
 /CXX
-config.mk
+Makefile
 t/all.t
 version.h
 wvtftpd
